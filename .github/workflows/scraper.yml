@@ -2,8 +2,8 @@ name: Scraper Cron
 
 on:
   schedule:
-    # Run every hour
-    - cron: '0 * * * *'
+    # Run every 30 minutes
+    - cron: '*/30 * * * *'
   workflow_dispatch:
     # Allow manual trigger
 
