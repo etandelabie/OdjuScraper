@@ -4,7 +4,10 @@ const { supabase } = require('../lib/supabaseNode');
 async function scrapeSites() {
   let browser;
   try {
-    browser = await puppeteer.launch({ headless: 'new' });
+    browser = await puppeteer.launch({ 
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
     
     // ==========================================
     // SITE 1 : hytale.game
