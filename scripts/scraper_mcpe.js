@@ -159,20 +159,8 @@ async function scrapeMinecraftPocketServers(page, maxPages = 5) {
         console.error('Erreur sauvegarde mcpe_servers Supabase:', upsertError);
     }
     
-    // 4. Save history
-    const totalPlayers = finalServers.reduce((sum, srv) => sum + (srv.players || 0), 0);
-    const { error: historyError } = await supabase
-        .from('mcpe_history')
-        .insert([{
-            timestamp: new Date().toISOString(),
-            total_players: totalPlayers,
-            servers_count: finalServers.length
-        }]);
-        
-    if (historyError) {
-        console.error('Erreur sauvegarde mcpe_history Supabase:', historyError);
-    }
-    
+    // 4. L'historique (mcpe_history) n'est plus enregistré par ce script.
+    // Il est désormais géré par l'API /api/mcpe/sync_ping en temps réel.
     
     console.log(`Scraping MCPE terminé : ${finalServers.length} vrais serveurs MCPE trouvés.`);
   } catch (error) {

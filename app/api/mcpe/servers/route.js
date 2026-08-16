@@ -22,7 +22,13 @@ export async function GET() {
     formattedServers.sort((a, b) => b.players - a.players);
     
     const totalPlayers = formattedServers.reduce((sum, srv) => sum + srv.players, 0);
-    const lastUpdated = formattedServers.length > 0 ? formattedServers[0].updated_at : null;
-    
+    // Fetch last history entry to get precise lastUpdated time
+    const { data: histData } = await supabase
+        .from('mcpe_history')
+        .select('timestamp')
+        .order('timestamp', { ascending: false })
+        .limit(1);
+        
+    const lastUpdated = histData && histData.length > 0 ? histData[0].timestamp : null;
     return NextResponse.json({ success: true, servers: formattedServers, totalPlayers, lastUpdated });
 }
