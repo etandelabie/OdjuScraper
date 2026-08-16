@@ -249,7 +249,7 @@ export default function MCPEHome() {
                           <span className="players-count" style={{ textShadow: server.banner ? '0 1px 3px rgba(0,0,0,0.9)' : 'none' }}>
                             {server.status.players} {server.status.max > 0 ? `/ ${server.status.max}` : 'Joueurs'}
                           </span>
-                          {server.status.ping && <span className="ping-info">{server.status.ping}ms</span>}
+                          {server.status.ping > 0 && <span className="ping-info">{server.status.ping}ms</span>}
                           <span className="status-badge status-online" style={{ boxShadow: server.banner ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none' }}>EN LIGNE</span>
                         </>
                       ) : (
