@@ -3,8 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-
-
 export default function MCPEHome() {
   const [servers, setServers] = useState([]);
   const [totalPlayers, setTotalPlayers] = useState(0);
@@ -29,7 +27,6 @@ export default function MCPEHome() {
       const histRes = await fetch('/api/mcpe/history', { cache: 'no-store' });
       const histData = await histRes.json();
       if (histData.success && histData.history) {
-        // Format history for the chart
         const formattedHistory = histData.history.map(item => ({
             ...item,
             timeLabel: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -48,9 +45,9 @@ export default function MCPEHome() {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement le serveur ${host} de cette liste ?`)) return;
+    if (!window.confirm(`Are you sure you want to permanently delete the server ${host} from this list?`)) return;
     
-    const adminPassword = window.prompt("Veuillez entrer le mot de passe administrateur pour effectuer cette action :");
+    const adminPassword = window.prompt("Please enter the administrator password to perform this action:");
     if (!adminPassword) return;
     
     try {
@@ -61,20 +58,18 @@ export default function MCPEHome() {
       });
       const data = await res.json();
       if (data.success) {
-        // Remove locally immediately for snappy UI
         setServers(servers.filter(s => s.host !== host));
       } else {
-        alert(data.error || 'Erreur lors de la suppression');
+        alert(data.error || 'Error during deletion');
       }
     } catch (err) {
       console.error(err);
-      alert('Erreur réseau');
+      alert('Network error');
     }
   };
 
   useEffect(() => {
     fetchServers();
-    // Refresh every 30 seconds
     const interval = setInterval(fetchServers, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -86,7 +81,7 @@ export default function MCPEHome() {
     if (s.country && s.country !== 'unknown') {
         nationsCount[s.country] = (nationsCount[s.country] || 0) + players;
     }
-    const gms = s.gameModes && s.gameModes.length > 0 ? s.gameModes : ['autre'];
+    const gms = s.gameModes && s.gameModes.length > 0 ? s.gameModes : ['other'];
     gms.forEach(gm => {
         const modeUpper = gm.toUpperCase();
         gameModesCount[modeUpper] = (gameModesCount[modeUpper] || 0) + players;
@@ -115,10 +110,9 @@ export default function MCPEHome() {
     }
   };
 
-  // Top Stats Calculation
   let displayPlayers = 0;
   let displayServersCount = 0;
-  let statLabel = "Joueurs en ligne (Global) / Serveurs uniques";
+  let statLabel = "Players online (Global) / Unique Servers";
 
   if (selectedServers.length > 0) {
       displayPlayers = selectedServers.reduce((sum, host) => {
@@ -126,17 +120,16 @@ export default function MCPEHome() {
           return sum + (srv?.status?.players || 0);
       }, 0);
       displayServersCount = selectedServers.length;
-      statLabel = "Joueurs en ligne (Sélection) / Serveurs sélectionnés";
+      statLabel = "Players online (Selection) / Selected Servers";
   } else if (selectedCountries.length > 0) {
       displayPlayers = displayedServers.reduce((sum, srv) => sum + (srv.status?.players || 0), 0);
       displayServersCount = displayedServers.length;
-      statLabel = "Joueurs en ligne (Filtre Pays) / Serveurs filtrés";
+      statLabel = "Players online (Country Filter) / Filtered Servers";
   } else {
       displayPlayers = totalPlayers;
       displayServersCount = servers.length;
   }
 
-  // Chart Data Calculation
   const chartData = useMemo(() => {
     return historyData.map(point => {
         let entry = { timeLabel: point.timeLabel };
@@ -160,10 +153,9 @@ export default function MCPEHome() {
     });
   }, [historyData, selectedServers, selectedCountries, servers]);
 
-  // Nations Chart Data
   const nationsChartData = useMemo(() => {
      if (availableCountries.length === 0) return [];
-     const nationsKeys = availableCountries;
+     const nationsKeys = selectedCountries.length > 0 ? selectedCountries : availableCountries;
      
      const serversByCountry = {};
      servers.forEach(s => {
@@ -182,7 +174,7 @@ export default function MCPEHome() {
          });
          return entry;
      });
-  }, [historyData, availableCountries, servers]);
+  }, [historyData, availableCountries, selectedCountries, servers]);
 
   const colors = ["#f59e0b", "#3b82f6", "#10b981", "#ec4899", "#8b5cf6", "#ef4444", "#14b8a6", "#f97316"];
 
@@ -190,10 +182,10 @@ export default function MCPEHome() {
     <div className="container">
       <header className="header">
         <h1 className="title">MCPE Server Tracker</h1>
-        <p className="subtitle">Données ultra fluides en Temps Réel</p>
+        <p className="subtitle">Real-Time Data & Analytics</p>
         {lastUpdated && (
           <p style={{ fontSize: '0.85rem', color: '#10b981', marginTop: '0.5rem', fontWeight: 'bold' }}>
-            Dernière actualisation : {new Date(lastUpdated).toLocaleTimeString()}
+            Last updated: {new Date(lastUpdated).toLocaleTimeString()}
           </p>
         )}
       </header>
@@ -211,8 +203,8 @@ export default function MCPEHome() {
             {historyData.length > 0 && (
                 <div style={{ marginTop: '2rem', marginBottom: '2rem', height: '250px', width: '100%' }}>
                     <h2 style={{ marginBottom: '1rem' }}>
-                        {selectedServers.length > 0 ? "Évolution des serveurs sélectionnés" : 
-                         selectedCountries.length > 0 ? `Évolution des joueurs (Filtre Pays)` : "Évolution Globale des joueurs"}
+                        {selectedServers.length > 0 ? "Selected Servers Trend" : 
+                         selectedCountries.length > 0 ? `Players Trend (Country Filter)` : "Global Players Trend"}
                     </h2>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={chartData}>
@@ -222,6 +214,7 @@ export default function MCPEHome() {
                             <Tooltip 
                                 contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
                                 itemStyle={{ fontWeight: 'bold' }}
+                                itemSorter={(item) => -item.value}
                             />
                             {selectedServers.length > 0 && <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />}
                             
@@ -230,16 +223,16 @@ export default function MCPEHome() {
                                     <Line key={host} type="monotone" dataKey={host} name={host} stroke={colors[i % colors.length]} strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
                                 ))
                             ) : (
-                                <Line type="monotone" dataKey="totalPlayers" name="Joueurs" stroke="#f59e0b" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#f59e0b', stroke: '#fff', strokeWidth: 2 }} />
+                                <Line type="monotone" dataKey="totalPlayers" name="Players" stroke="#f59e0b" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#f59e0b', stroke: '#fff', strokeWidth: 2 }} />
                             )}
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
             )}
 
-            {historyData.length > 0 && nationsChartData.length > 0 && selectedServers.length === 0 && selectedCountries.length === 0 && (
+            {historyData.length > 0 && nationsChartData.length > 0 && selectedServers.length === 0 && (
                 <div style={{ marginTop: '2rem', marginBottom: '2rem', height: '250px', width: '100%' }}>
-                    <h2 style={{ marginBottom: '1rem' }}>🏆 Guerre des Nations</h2>
+                    <h2 style={{ marginBottom: '1rem' }}>Nations Comparison</h2>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={nationsChartData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -248,9 +241,10 @@ export default function MCPEHome() {
                             <Tooltip 
                                 contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
                                 itemStyle={{ fontWeight: 'bold' }}
+                                itemSorter={(item) => -item.value}
                             />
                             <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                            {availableCountries.map((nation, i) => (
+                            {(selectedCountries.length > 0 ? selectedCountries : availableCountries).map((nation, i) => (
                                 <Line key={nation} type="monotone" dataKey={nation} name={nation.toUpperCase()} stroke={colors[i % colors.length]} strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
                             ))}
                         </LineChart>
@@ -259,9 +253,9 @@ export default function MCPEHome() {
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', marginTop: '3rem' }}>
-                <h2 style={{ margin: 0 }}>Serveurs MCPE (Minecraft Bedrock)</h2>
+                <h2 style={{ margin: 0 }}>MCPE Servers (Minecraft Bedrock)</h2>
                 <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', marginRight: '0.5rem' }}>Filtres Pays :</span>
+                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', marginRight: '0.5rem' }}>Country Filters:</span>
                     
                     <button 
                         onClick={() => setSelectedCountries([])}
@@ -277,14 +271,14 @@ export default function MCPEHome() {
                             transition: 'all 0.2s'
                         }}
                     >
-                        🌍 Tous
+                        🌍 All
                     </button>
                     
                     {availableCountries.map(c => (
                         <button 
                             key={c}
                             onClick={() => toggleCountry(c)}
-                            title={`Filtrer par ${c}`}
+                            title={`Filter by ${c}`}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -306,9 +300,9 @@ export default function MCPEHome() {
                 </div>
                 {selectedServers.length > 0 && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-                        <span style={{ fontSize: '0.9rem', color: '#3b82f6', fontWeight: 'bold' }}>{selectedServers.length} serveurs sélectionnés</span>
+                        <span style={{ fontSize: '0.9rem', color: '#3b82f6', fontWeight: 'bold' }}>{selectedServers.length} servers selected</span>
                         <button onClick={() => setSelectedServers([])} style={{ background: 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                            Tout désélectionner
+                            Clear selection
                         </button>
                     </div>
                 )}
@@ -352,15 +346,15 @@ export default function MCPEHome() {
                                 src={`https://flagcdn.com/w20/${server.country.toLowerCase()}.png`} 
                                 width="20" 
                                 alt={server.country} 
-                                title={`Pays: ${server.country}`}
+                                title={`Country: ${server.country}`}
                                 style={{ borderRadius: '2px' }}
                               />
                           )}
                           {server.name || server.host}
                         </h3>
-                        <p className="server-address">{server.host}:{server.port || 5520}</p>
+                        <p className="server-address">{server.host}:{server.port || 19132}</p>
                         <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                           {(server.gameModes && server.gameModes.length > 0 ? server.gameModes : ['autre']).map((mode, i) => (
+                           {(server.gameModes && server.gameModes.length > 0 ? server.gameModes : ['other']).map((mode, i) => (
                              <span key={i} style={{ 
                                  fontSize: '0.75rem', 
                                  background: 'rgba(245, 158, 11, 0.2)', 
@@ -380,18 +374,18 @@ export default function MCPEHome() {
                       {server.status && server.status.online ? (
                         <>
                           <span className="players-count" style={{ textShadow: server.banner ? '0 1px 3px rgba(0,0,0,0.9)' : 'none' }}>
-                            {server.status.players} {server.status.max > 0 ? `/ ${server.status.max}` : 'Joueurs'}
+                            {server.status.players} {server.status.max > 0 ? `/ ${server.status.max}` : 'Players'}
                           </span>
                           {server.status.ping > 0 && <span className="ping-info">{server.status.ping}ms</span>}
-                          <span className="status-badge status-online" style={{ boxShadow: server.banner ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none' }}>EN LIGNE</span>
+                          <span className="status-badge status-online" style={{ boxShadow: server.banner ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none' }}>ONLINE</span>
                         </>
                       ) : (
-                        <span className="status-badge status-offline">HORS LIGNE</span>
+                        <span className="status-badge status-offline">OFFLINE</span>
                       )}
                       
                       <button 
                         onClick={(e) => handleBanServer(server.host, e)}
-                        title="Signaler comme Fake/Cross-play (Supprimer)"
+                        title="Report as Fake/Cross-play (Delete)"
                         style={{
                            marginLeft: '15px',
                            background: 'rgba(239, 68, 68, 0.2)',
@@ -415,7 +409,7 @@ export default function MCPEHome() {
                   </li>
                 )})}
                 {displayedServers.length === 0 && !loading && (
-                  <p style={{ color: 'var(--text-secondary)' }}>Aucun serveur trouvé pour cette nation.</p>
+                  <p style={{ color: 'var(--text-secondary)' }}>No servers found for this nation.</p>
                 )}
               </ul>
             )}
@@ -424,7 +418,7 @@ export default function MCPEHome() {
 
         <aside>
           <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem', color: '#f59e0b' }}>🏆 Tendances (Top 5)</h2>
+            <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem', color: '#f59e0b' }}>🏆 Trends (Top 5)</h2>
             
             <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', marginTop: '1rem' }}>Top Nations</h3>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -439,7 +433,7 @@ export default function MCPEHome() {
               ))}
             </ul>
 
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', marginTop: '1.5rem' }}>Top Modes de Jeu</h3>
+            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', marginTop: '1.5rem' }}>Top Game Modes</h3>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {topGameModes.map(([mode, count]) => (
                 <li key={mode} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem', fontSize: '0.9rem' }}>
@@ -451,9 +445,9 @@ export default function MCPEHome() {
           </div>
           
           <div className="glass-panel">
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}>Sources du Scraper Fantôme</h2>
+            <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}>Phantom Scraper Sources</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              Le robot aspire automatiquement les serveurs depuis ces sites communautaires :
+              The bot automatically scrapes servers from these community sites:
             </p>
             <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
               <li style={{ marginBottom: '10px' }}>

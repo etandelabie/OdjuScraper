@@ -88,7 +88,7 @@ export default function Home() {
         <p className="subtitle">Real-time status of Hytale community servers</p>
         {lastUpdated && (
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 'bold' }}>
-            Dernière actualisation du robot : {new Date(lastUpdated).toLocaleTimeString()}
+            Last updated: {new Date(lastUpdated).toLocaleTimeString()}
           </p>
         )}
       </header>
@@ -100,12 +100,12 @@ export default function Home() {
               <div className="stat-value" style={{ fontSize: '2.5rem' }}>
                 {loading && servers.length === 0 ? '-' : `${totalPlayers.toLocaleString()} / ${servers.length}`}
               </div>
-              <div className="stat-label">Joueurs en ligne / Serveurs uniques</div>
+              <div className="stat-label">Players online / Unique servers</div>
             </div>
 
             {historyData.length > 0 && (
                 <div style={{ marginTop: '2rem', marginBottom: '2rem', height: '250px', width: '100%' }}>
-                    <h2 style={{ marginBottom: '1rem' }}>Évolution des joueurs en ligne</h2>
+                    <h2 style={{ marginBottom: '1rem' }}>Players Trend</h2>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={historyData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -115,7 +115,7 @@ export default function Home() {
                                 contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
                                 itemStyle={{ color: '#0ea5e9', fontWeight: 'bold' }}
                             />
-                            <Line type="monotone" dataKey="totalPlayers" name="Joueurs" stroke="#0ea5e9" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#0ea5e9', stroke: '#fff', strokeWidth: 2 }} />
+                            <Line type="monotone" dataKey="totalPlayers" name="Players" stroke="#0ea5e9" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#0ea5e9', stroke: '#fff', strokeWidth: 2 }} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -155,13 +155,13 @@ export default function Home() {
                       {server.status && server.status.online ? (
                         <>
                           <span className="players-count" style={{ textShadow: server.banner ? '0 1px 3px rgba(0,0,0,0.9)' : 'none' }}>
-                            {server.status.players} {server.status.max > 0 ? `/ ${server.status.max}` : 'Joueurs'}
+                            {server.status.players} {server.status.max > 0 ? `/ ${server.status.max}` : 'Players'}
                           </span>
-                          {server.status.ping && <span className="ping-info">{server.status.ping}ms</span>}
-                          <span className="status-badge status-online" style={{ boxShadow: server.banner ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none' }}>EN LIGNE</span>
+                          {server.status.ping > 0 && <span className="ping-info">{server.status.ping}ms</span>}
+                          <span className="status-badge status-online" style={{ boxShadow: server.banner ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none' }}>ONLINE</span>
                         </>
                       ) : (
-                        <span className="status-badge status-offline">HORS LIGNE</span>
+                        <span className="status-badge status-offline">OFFLINE</span>
                       )}
                     </div>
                   </li>
@@ -203,9 +203,9 @@ export default function Home() {
             </form>
           </div>
           <div className="glass-panel" style={{ marginTop: '1.5rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}>Sources du Scraper Fantôme</h2>
+            <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}>Phantom Scraper Sources</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              Le robot aspire automatiquement les serveurs depuis ces sites communautaires :
+              The bot automatically scrapes servers from these community sites:
             </p>
             <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
               <li>
