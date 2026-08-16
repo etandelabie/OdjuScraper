@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useState, useEffect, useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 
 
@@ -12,10 +12,11 @@ export default function MCPEHome() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [historyData, setHistoryData] = useState([]);
   const [selectedCountries, setSelectedCountries] = useState([]);
+  const [selectedServers, setSelectedServers] = useState([]);
 
   const fetchServers = async () => {
     try {
-      const res = await fetch('/api/mcpe/servers');
+      const res = await fetch('/api/mcpe/servers', { cache: 'no-store' });
       const data = await res.json();
       if (data.success) {
         setServers(data.servers);
@@ -25,13 +26,14 @@ export default function MCPEHome() {
         }
       }
       
-      const histRes = await fetch('/api/mcpe/history');
+      const histRes = await fetch('/api/mcpe/history', { cache: 'no-store' });
       const histData = await histRes.json();
       if (histData.success && histData.history) {
         // Format history for the chart
         const formattedHistory = histData.history.map(item => ({
             ...item,
-            timeLabel: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            timeLabel: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            serverData: item.serverData || {}
         }));
         setHistoryData(formattedHistory);
       }
@@ -105,41 +107,152 @@ export default function MCPEHome() {
     }
   };
 
+  const toggleServer = (host) => {
+    if (selectedServers.includes(host)) {
+        setSelectedServers(selectedServers.filter(h => h !== host));
+    } else {
+        setSelectedServers([...selectedServers, host]);
+    }
+  };
+
+  // Top Stats Calculation
+  let displayPlayers = 0;
+  let displayServersCount = 0;
+  let statLabel = "Joueurs en ligne (Global) / Serveurs uniques";
+
+  if (selectedServers.length > 0) {
+      displayPlayers = selectedServers.reduce((sum, host) => {
+          const srv = servers.find(s => s.host === host);
+          return sum + (srv?.status?.players || 0);
+      }, 0);
+      displayServersCount = selectedServers.length;
+      statLabel = "Joueurs en ligne (Sélection) / Serveurs sélectionnés";
+  } else if (selectedCountries.length > 0) {
+      displayPlayers = displayedServers.reduce((sum, srv) => sum + (srv.status?.players || 0), 0);
+      displayServersCount = displayedServers.length;
+      statLabel = "Joueurs en ligne (Filtre Pays) / Serveurs filtrés";
+  } else {
+      displayPlayers = totalPlayers;
+      displayServersCount = servers.length;
+  }
+
+  // Chart Data Calculation
+  const chartData = useMemo(() => {
+    return historyData.map(point => {
+        let entry = { timeLabel: point.timeLabel };
+        
+        if (selectedServers.length > 0) {
+            selectedServers.forEach(host => {
+                entry[host] = point.serverData[host] || 0;
+            });
+        } else if (selectedCountries.length > 0) {
+            let sum = 0;
+            const countryServers = servers.filter(s => selectedCountries.includes(s.country)).map(s => s.host);
+            countryServers.forEach(host => {
+                sum += (point.serverData[host] || 0);
+            });
+            entry.totalPlayers = sum;
+        } else {
+            entry.totalPlayers = point.totalPlayers;
+        }
+        
+        return entry;
+    });
+  }, [historyData, selectedServers, selectedCountries, servers]);
+
+  // Nations Chart Data
+  const nationsChartData = useMemo(() => {
+     if (topNations.length === 0) return [];
+     const topNationsKeys = topNations.map(t => t[0]);
+     
+     const serversByCountry = {};
+     servers.forEach(s => {
+         if (!serversByCountry[s.country]) serversByCountry[s.country] = [];
+         serversByCountry[s.country].push(s.host);
+     });
+     
+     return historyData.map(point => {
+         let entry = { timeLabel: point.timeLabel };
+         topNationsKeys.forEach(country => {
+             let sum = 0;
+             (serversByCountry[country] || []).forEach(host => {
+                 sum += (point.serverData[host] || 0);
+             });
+             entry[country] = sum;
+         });
+         return entry;
+     });
+  }, [historyData, topNations, servers]);
+
+  const colors = ["#f59e0b", "#3b82f6", "#10b981", "#ec4899", "#8b5cf6", "#ef4444", "#14b8a6", "#f97316"];
+
   return (
     <div className="container">
       <header className="header">
         <h1 className="title">MCPE Server Tracker</h1>
-        <p className="subtitle">Real-time status of Minecraft Bedrock community servers</p>
+        <p className="subtitle">Données ultra fluides en Temps Réel</p>
         {lastUpdated && (
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 'bold' }}>
-            Dernière actualisation du robot : {new Date(lastUpdated).toLocaleTimeString()}
+          <p style={{ fontSize: '0.85rem', color: '#10b981', marginTop: '0.5rem', fontWeight: 'bold' }}>
+            Dernière actualisation : {new Date(lastUpdated).toLocaleTimeString()}
           </p>
         )}
       </header>
 
       <div className="dashboard">
         <main>
-          <div className="glass-panel">
+          <div className="glass-panel" style={{ border: selectedServers.length > 0 ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.1)' }}>
             <div className="stat-box">
-              <div className="stat-value" style={{ fontSize: '2.5rem' }}>
-                {loading && servers.length === 0 ? '-' : `${totalPlayers.toLocaleString()} / ${servers.length}`}
+              <div className="stat-value" style={{ fontSize: '2.5rem', color: selectedServers.length > 0 ? '#3b82f6' : (selectedCountries.length > 0 ? '#f59e0b' : 'white') }}>
+                {loading && servers.length === 0 ? '-' : `${displayPlayers.toLocaleString()} / ${displayServersCount}`}
               </div>
-              <div className="stat-label">Joueurs en ligne / Serveurs uniques</div>
+              <div className="stat-label">{statLabel}</div>
             </div>
 
             {historyData.length > 0 && (
                 <div style={{ marginTop: '2rem', marginBottom: '2rem', height: '250px', width: '100%' }}>
-                    <h2 style={{ marginBottom: '1rem' }}>Évolution des joueurs en ligne</h2>
+                    <h2 style={{ marginBottom: '1rem' }}>
+                        {selectedServers.length > 0 ? "Évolution des serveurs sélectionnés" : 
+                         selectedCountries.length > 0 ? `Évolution des joueurs (Filtre Pays)` : "Évolution Globale des joueurs"}
+                    </h2>
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={historyData}>
+                        <LineChart data={chartData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                             <XAxis dataKey="timeLabel" stroke="rgba(255,255,255,0.5)" tick={{fill: 'rgba(255,255,255,0.7)', fontSize: 12}} />
                             <YAxis stroke="rgba(255,255,255,0.5)" tick={{fill: 'rgba(255,255,255,0.7)', fontSize: 12}} />
                             <Tooltip 
                                 contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                                itemStyle={{ color: '#0ea5e9', fontWeight: 'bold' }}
+                                itemStyle={{ fontWeight: 'bold' }}
                             />
-                            <Line type="monotone" dataKey="totalPlayers" name="Joueurs" stroke="#f59e0b" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#f59e0b', stroke: '#fff', strokeWidth: 2 }} />
+                            {selectedServers.length > 0 && <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />}
+                            
+                            {selectedServers.length > 0 ? (
+                                selectedServers.map((host, i) => (
+                                    <Line key={host} type="monotone" dataKey={host} name={host} stroke={colors[i % colors.length]} strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                                ))
+                            ) : (
+                                <Line type="monotone" dataKey="totalPlayers" name="Joueurs" stroke="#f59e0b" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#f59e0b', stroke: '#fff', strokeWidth: 2 }} />
+                            )}
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
+
+            {historyData.length > 0 && nationsChartData.length > 0 && selectedServers.length === 0 && selectedCountries.length === 0 && (
+                <div style={{ marginTop: '2rem', marginBottom: '2rem', height: '250px', width: '100%' }}>
+                    <h2 style={{ marginBottom: '1rem' }}>🏆 Guerre des Nations (Top 5)</h2>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={nationsChartData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                            <XAxis dataKey="timeLabel" stroke="rgba(255,255,255,0.5)" tick={{fill: 'rgba(255,255,255,0.7)', fontSize: 12}} />
+                            <YAxis stroke="rgba(255,255,255,0.5)" tick={{fill: 'rgba(255,255,255,0.7)', fontSize: 12}} />
+                            <Tooltip 
+                                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                                itemStyle={{ fontWeight: 'bold' }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                            {topNations.map((nation, i) => (
+                                <Line key={nation[0]} type="monotone" dataKey={nation[0]} name={nation[0].toUpperCase()} stroke={colors[i % colors.length]} strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
+                            ))}
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -148,7 +261,7 @@ export default function MCPEHome() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', marginTop: '3rem' }}>
                 <h2 style={{ margin: 0 }}>Serveurs MCPE (Minecraft Bedrock)</h2>
                 <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', marginRight: '0.5rem' }}>Filtres :</span>
+                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', marginRight: '0.5rem' }}>Filtres Pays :</span>
                     
                     <button 
                         onClick={() => setSelectedCountries([])}
@@ -191,6 +304,14 @@ export default function MCPEHome() {
                         </button>
                     ))}
                 </div>
+                {selectedServers.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+                        <span style={{ fontSize: '0.9rem', color: '#3b82f6', fontWeight: 'bold' }}>{selectedServers.length} serveurs sélectionnés</span>
+                        <button onClick={() => setSelectedServers([])} style={{ background: 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                            Tout désélectionner
+                        </button>
+                    </div>
+                )}
             </div>
             
             {loading && servers.length === 0 ? (
@@ -199,15 +320,27 @@ export default function MCPEHome() {
               </div>
             ) : (
               <ul className="server-list">
-                {displayedServers.map((server, idx) => (
-                  <li key={idx} className="server-item" style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    backgroundImage: server.banner ? `linear-gradient(to right, rgba(15, 23, 42, 0.95) 40%, rgba(15, 23, 42, 0.6)), url(${server.banner})` : 'none',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    borderLeft: server.banner ? '4px solid var(--primary)' : undefined
-                  }}>
+                {displayedServers.map((server, idx) => {
+                  const isSelected = selectedServers.includes(server.host);
+                  return (
+                  <li 
+                    key={idx} 
+                    className="server-item" 
+                    onClick={() => toggleServer(server.host)}
+                    style={{
+                      position: 'relative',
+                      overflow: 'hidden',
+                      backgroundImage: server.banner ? `linear-gradient(to right, rgba(15, 23, 42, 0.95) 40%, rgba(15, 23, 42, 0.6)), url(${server.banner})` : 'none',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      borderLeft: server.banner ? '4px solid var(--primary)' : undefined,
+                      border: isSelected ? '2px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.1)',
+                      boxShadow: isSelected ? '0 0 15px rgba(59, 130, 246, 0.3)' : 'none',
+                      cursor: 'pointer',
+                      transform: isSelected ? 'scale(1.01)' : 'scale(1)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
                     <div className="server-info" style={{ display: 'flex', alignItems: 'center', gap: '1rem', zIndex: 1, position: 'relative' }}>
                       {server.logo && (
                         <img src={server.logo} alt={server.name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }} />
@@ -280,7 +413,7 @@ export default function MCPEHome() {
                       </button>
                     </div>
                   </li>
-                ))}
+                )})}
                 {displayedServers.length === 0 && !loading && (
                   <p style={{ color: 'var(--text-secondary)' }}>Aucun serveur trouvé pour cette nation.</p>
                 )}

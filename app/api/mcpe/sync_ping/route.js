@@ -60,12 +60,22 @@ export async function GET(req) {
         
         // 4. Calculer le total et enregistrer l'historique
         const totalPlayers = updatedServers.reduce((sum, s) => sum + (s.status?.players || 0), 0);
+        
+        // Créer un dictionnaire { "host": players } pour l'historique détaillé
+        const serverData = {};
+        updatedServers.forEach(s => {
+            if (s.status?.players > 0) {
+                serverData[s.host] = s.status.players;
+            }
+        });
+
         const { error: histError } = await supabase
             .from('mcpe_history')
             .insert({
                 timestamp: new Date().toISOString(),
                 total_players: totalPlayers,
-                servers_count: updatedServers.length
+                servers_count: updatedServers.length,
+                server_data: serverData
             });
             
         if (histError) throw histError;
