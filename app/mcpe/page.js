@@ -130,15 +130,23 @@ export default function MCPEHome() {
       displayServersCount = servers.length;
   }
 
+  const chartLines = useMemo(() => {
+      if (selectedServers.length > 0) return selectedServers;
+      if (selectedCountries.length === 1) {
+          return servers.filter(s => s.country === selectedCountries[0]).map(s => s.host);
+      }
+      return [];
+  }, [selectedServers, selectedCountries, servers]);
+
   const chartData = useMemo(() => {
     return historyData.map(point => {
         let entry = { timeLabel: point.timeLabel };
         
-        if (selectedServers.length > 0) {
-            selectedServers.forEach(host => {
+        if (chartLines.length > 0) {
+            chartLines.forEach(host => {
                 entry[host] = point.serverData[host] || 0;
             });
-        } else if (selectedCountries.length > 0) {
+        } else if (selectedCountries.length > 1) {
             let sum = 0;
             const countryServers = servers.filter(s => selectedCountries.includes(s.country)).map(s => s.host);
             countryServers.forEach(host => {
@@ -151,7 +159,7 @@ export default function MCPEHome() {
         
         return entry;
     });
-  }, [historyData, selectedServers, selectedCountries, servers]);
+  }, [historyData, chartLines, selectedCountries, servers]);
 
   const nationsChartData = useMemo(() => {
      if (availableCountries.length === 0) return [];
@@ -204,7 +212,8 @@ export default function MCPEHome() {
                 <div style={{ marginTop: '2rem', marginBottom: '2rem', height: '250px', width: '100%' }}>
                     <h2 style={{ marginBottom: '1rem' }}>
                         {selectedServers.length > 0 ? "Selected Servers Trend" : 
-                         selectedCountries.length > 0 ? `Players Trend (Country Filter)` : "Global Players Trend"}
+                         selectedCountries.length === 1 ? `Server Breakdown (${selectedCountries[0].toUpperCase()})` :
+                         selectedCountries.length > 1 ? `Players Trend (Country Filter)` : "Global Players Trend"}
                     </h2>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={chartData}>
@@ -216,10 +225,10 @@ export default function MCPEHome() {
                                 itemStyle={{ fontWeight: 'bold' }}
                                 itemSorter={(item) => -item.value}
                             />
-                            {selectedServers.length > 0 && <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />}
+                            {chartLines.length > 0 && <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />}
                             
-                            {selectedServers.length > 0 ? (
-                                selectedServers.map((host, i) => (
+                            {chartLines.length > 0 ? (
+                                chartLines.map((host, i) => (
                                     <Line key={host} type="monotone" dataKey={host} name={host} stroke={colors[i % colors.length]} strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
                                 ))
                             ) : (
