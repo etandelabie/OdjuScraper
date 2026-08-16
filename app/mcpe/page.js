@@ -162,8 +162,8 @@ export default function MCPEHome() {
 
   // Nations Chart Data
   const nationsChartData = useMemo(() => {
-     if (topNations.length === 0) return [];
-     const topNationsKeys = topNations.map(t => t[0]);
+     if (availableCountries.length === 0) return [];
+     const nationsKeys = availableCountries;
      
      const serversByCountry = {};
      servers.forEach(s => {
@@ -173,7 +173,7 @@ export default function MCPEHome() {
      
      return historyData.map(point => {
          let entry = { timeLabel: point.timeLabel };
-         topNationsKeys.forEach(country => {
+         nationsKeys.forEach(country => {
              let sum = 0;
              (serversByCountry[country] || []).forEach(host => {
                  sum += (point.serverData[host] || 0);
@@ -182,7 +182,7 @@ export default function MCPEHome() {
          });
          return entry;
      });
-  }, [historyData, topNations, servers]);
+  }, [historyData, availableCountries, servers]);
 
   const colors = ["#f59e0b", "#3b82f6", "#10b981", "#ec4899", "#8b5cf6", "#ef4444", "#14b8a6", "#f97316"];
 
@@ -239,7 +239,7 @@ export default function MCPEHome() {
 
             {historyData.length > 0 && nationsChartData.length > 0 && selectedServers.length === 0 && selectedCountries.length === 0 && (
                 <div style={{ marginTop: '2rem', marginBottom: '2rem', height: '250px', width: '100%' }}>
-                    <h2 style={{ marginBottom: '1rem' }}>🏆 Guerre des Nations (Top 5)</h2>
+                    <h2 style={{ marginBottom: '1rem' }}>🏆 Guerre des Nations</h2>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={nationsChartData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -250,8 +250,8 @@ export default function MCPEHome() {
                                 itemStyle={{ fontWeight: 'bold' }}
                             />
                             <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                            {topNations.map((nation, i) => (
-                                <Line key={nation[0]} type="monotone" dataKey={nation[0]} name={nation[0].toUpperCase()} stroke={colors[i % colors.length]} strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
+                            {availableCountries.map((nation, i) => (
+                                <Line key={nation} type="monotone" dataKey={nation} name={nation.toUpperCase()} stroke={colors[i % colors.length]} strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
                             ))}
                         </LineChart>
                     </ResponsiveContainer>
