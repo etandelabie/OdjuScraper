@@ -3,7 +3,12 @@ import { supabase } from '../../../../lib/supabaseClient';
 
 export async function POST(req) {
     try {
-        const { host } = await req.json();
+        const { host, password } = await req.json();
+        
+        if (password !== process.env.ADMIN_PASSWORD) {
+            return NextResponse.json({ success: false, error: 'Mot de passe incorrect' }, { status: 401 });
+        }
+        
         if (!host) return NextResponse.json({ success: false, error: 'Host missing' });
         
         const { error } = await supabase

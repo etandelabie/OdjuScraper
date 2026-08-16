@@ -48,11 +48,14 @@ export default function MCPEHome() {
     
     if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement le serveur ${host} de cette liste ?`)) return;
     
+    const adminPassword = window.prompt("Veuillez entrer le mot de passe administrateur pour effectuer cette action :");
+    if (!adminPassword) return;
+    
     try {
       const res = await fetch('/api/mcpe/ban', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ host })
+        body: JSON.stringify({ host, password: adminPassword })
       });
       const data = await res.json();
       if (data.success) {
