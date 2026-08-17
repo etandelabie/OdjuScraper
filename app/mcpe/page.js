@@ -368,10 +368,10 @@ export default function MCPEHome() {
         )}
       </header>
 
-      <div className="dashboard" style={{ gridTemplateColumns: profileHost ? '460px 1fr' : undefined, gap: '2rem', alignItems: 'start' }}>
+      <div className="dashboard" style={{ gridTemplateColumns: profileHost ? '550px 1fr' : undefined, gap: '2rem', alignItems: 'start' }}>
         
         {profileHost && (
-            <aside className="server-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: '2rem', maxHeight: 'calc(100vh - 4rem)', overflowY: 'auto', paddingRight: '10px' }}>
+            <aside className="server-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: '100px', maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', paddingRight: '10px' }}>
                 {profileStats ? (
                 <>
                 <div className="glass-panel" style={{ textAlign: 'center', position: 'relative', overflow: 'hidden', padding: 0, flexShrink: 0 }}>
