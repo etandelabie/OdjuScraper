@@ -318,7 +318,6 @@ export default function MCPEHome() {
                                 {profileStats.server.status.players} <span style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>/ {profileStats.server.status.max || '∞'}</span>
                             </div>
                         )}
-                        <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Version: <span style={{color: '#fff'}}>{profileStats.server.version?.name || 'Unknown'}</span></p>
                     </div>
                 </div>
                 
@@ -469,7 +468,7 @@ export default function MCPEHome() {
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData}>
+                        <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 25 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                             <XAxis dataKey="timeLabel" stroke="rgba(255,255,255,0.5)" tick={{fill: 'rgba(255,255,255,0.7)', fontSize: 12}} />
                             <YAxis stroke="rgba(255,255,255,0.5)" tick={{fill: 'rgba(255,255,255,0.7)', fontSize: 12}} />
@@ -496,7 +495,7 @@ export default function MCPEHome() {
                 <div style={{ marginTop: '2rem', marginBottom: '2rem', height: '250px', width: '100%' }}>
                     <h2 style={{ marginBottom: '1rem' }}>Nations Comparison</h2>
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={nationsChartData}>
+                        <LineChart data={nationsChartData} margin={{ top: 5, right: 20, left: 0, bottom: 25 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                             <XAxis dataKey="timeLabel" stroke="rgba(255,255,255,0.5)" tick={{fill: 'rgba(255,255,255,0.7)', fontSize: 12}} />
                             <YAxis stroke="rgba(255,255,255,0.5)" tick={{fill: 'rgba(255,255,255,0.7)', fontSize: 12}} />
