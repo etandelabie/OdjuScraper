@@ -125,8 +125,24 @@ async function scrapeMinecraftPocketServers(page, maxPages = 5) {
     if (banError) {
         console.error('Erreur lecture banlist depuis Supabase:', banError);
     } else if (bannedData) {
-        const bannedHosts = bannedData.map(b => b.host);
-        finalServers = finalServers.filter(s => !bannedHosts.includes(s.host));
+        const bannedHosts = bannedData.map(b => b.host.toLowerCase());
+        finalServers = finalServers.filter(s => !bannedHosts.includes(s.host.toLowerCase()));
+    }
+    
+    // 1.5 Auto-ban specific patterns
+    const serversToBan = [];
+    finalServers = finalServers.filter(s => {
+        const hostLower = s.host.toLowerCase();
+        if (hostLower.startsWith('bedrock.') || s.country === 'CN') {
+            serversToBan.push({ host: s.host });
+            return false;
+        }
+        return true;
+    });
+    
+    if (serversToBan.length > 0) {
+        await supabase.from('mcpe_banned_servers').upsert(serversToBan, { onConflict: 'host' });
+        console.log(`Auto-banned ${serversToBan.length} invalid or cross-play servers.`);
     }
     
     // 2. Format servers for Supabase
