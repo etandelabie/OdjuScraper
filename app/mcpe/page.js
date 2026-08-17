@@ -291,7 +291,7 @@ export default function MCPEHome() {
       <div className="dashboard" style={{ gridTemplateColumns: selectedServers.length === 1 ? '380px 1fr' : undefined, gap: '2rem' }}>
         
         {selectedServers.length === 1 && (
-            <aside className="server-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', paddingRight: '0.5rem' }}>
+            <aside className="server-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 {profileStats ? (
                 <>
                 <div className="glass-panel" style={{ textAlign: 'center', position: 'relative', overflow: 'hidden', padding: 0, flexShrink: 0 }}>
