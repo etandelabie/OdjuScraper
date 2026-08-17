@@ -115,7 +115,7 @@ async function scrapeMinecraftPocketServers(page, maxPages = 5) {
       }
     });
 
-    let finalServers = await scrapeMinecraftPocketServers(page, 10);
+    let finalServers = await scrapeMinecraftPocketServers(page, 30);
     
     // 1. Fetch banned servers from Supabase
     const { data: bannedData, error: banError } = await supabase
