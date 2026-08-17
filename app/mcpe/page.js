@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, AreaChart, Area } from 'recharts';
 
 export default function MCPEHome() {
   const [servers, setServers] = useState([]);
@@ -13,6 +13,12 @@ export default function MCPEHome() {
   const [selectedServers, setSelectedServers] = useState([]);
   const [showAllNations, setShowAllNations] = useState(false);
   const [period, setPeriod] = useState('24h');
+  
+  // Profile specific states
+  const [serverProfileData, setServerProfileData] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [trendComparison, setTrendComparison] = useState('yesterday'); // 'yesterday', 'lastWeek'
+  const [profileChartPeriod, setProfileChartPeriod] = useState('7d'); // '7d', '30d'
 
   const fetchServers = async () => {
     try {
@@ -84,6 +90,27 @@ export default function MCPEHome() {
     const interval = setInterval(fetchServers, 60000); // 1 min update
     return () => clearInterval(interval);
   }, [period]);
+
+  useEffect(() => {
+      if (selectedServers.length === 1) {
+          const host = selectedServers[0];
+          setProfileLoading(true);
+          fetch(`/api/mcpe/server_profile?host=${host}`)
+              .then(res => res.json())
+              .then(data => {
+                  if (data.success) {
+                      setServerProfileData(data);
+                  }
+                  setProfileLoading(false);
+              })
+              .catch(err => {
+                  console.error(err);
+                  setProfileLoading(false);
+              });
+      } else {
+          setServerProfileData(null);
+      }
+  }, [selectedServers]);
 
   const nationsCount = {};
   servers.forEach(s => {
@@ -201,90 +228,53 @@ export default function MCPEHome() {
   const colors = ["#f59e0b", "#3b82f6", "#10b981", "#ec4899", "#8b5cf6", "#ef4444", "#14b8a6", "#f97316"];
 
   const profileStats = useMemo(() => {
-      if (selectedServers.length !== 1 || historyData.length === 0) return null;
+      if (selectedServers.length !== 1 || !serverProfileData) return null;
       const host = selectedServers[0];
       const srv = servers.find(s => s.host === host);
       if (!srv) return null;
       
-      let maxPlayers = 0;
-      let minPlayers = Infinity;
-      let sumPlayers = 0;
-      let uptimePoints = 0;
+      const { dailyData, averagePeakHour, trends } = serverProfileData;
       
-      const hourlyAverages = Array(24).fill(0).map(() => ({ sum: 0, count: 0 }));
+      // Calculate trend percentage
+      let trendValue = 0;
+      const currentAvg = trendComparison === 'yesterday' ? trends.current24h : trends.current7d;
+      const prevAvg = trendComparison === 'yesterday' ? trends.yesterday : trends.lastWeek;
       
-      let dailyStats = {}; // { 'YYYY-MM-DD': { max: 0, min: Infinity } }
-      
-      historyData.forEach(point => {
-          const players = point.serverData[host] || 0;
-          if (players > maxPlayers) maxPlayers = players;
-          if (players < minPlayers) minPlayers = players;
-          sumPlayers += players;
-          if (players > 0) uptimePoints++;
-          
-          const date = new Date(point.timestamp);
-          const hour = date.getHours();
-          hourlyAverages[hour].sum += players;
-          hourlyAverages[hour].count++;
-          
-          const dayKey = date.toISOString().split('T')[0];
-          if (!dailyStats[dayKey]) dailyStats[dayKey] = { max: 0, min: Infinity };
-          if (players > dailyStats[dayKey].max) dailyStats[dayKey].max = players;
-          if (players < dailyStats[dayKey].min) dailyStats[dayKey].min = players;
-      });
-      
-      if (minPlayers === Infinity) minPlayers = 0;
-      
-      let totalVolatility = 0;
-      let daysCount = 0;
-      Object.values(dailyStats).forEach(ds => {
-          if (ds.min !== Infinity) {
-              totalVolatility += (ds.max - ds.min);
-              daysCount++;
-          }
-      });
-      const avgVolatility = daysCount > 0 ? Math.round(totalVolatility / daysCount) : 0;
-      
-      const uptime = ((uptimePoints / historyData.length) * 100).toFixed(1);
-      
-      let peakHour = 0;
-      let maxAvg = 0;
-      hourlyAverages.forEach((h, i) => {
-          const avg = h.count > 0 ? h.sum / h.count : 0;
-          if (avg > maxAvg) {
-              maxAvg = avg;
-              peakHour = i;
-          }
-      });
-      
-      const half = Math.floor(historyData.length / 2);
-      let sumFirstHalf = 0;
-      let sumSecondHalf = 0;
-      for (let i = 0; i < historyData.length; i++) {
-          const p = historyData[i].serverData[host] || 0;
-          if (i < half) sumFirstHalf += p;
-          else sumSecondHalf += p;
-      }
-      const avgFirst = sumFirstHalf / (half || 1);
-      const avgSecond = sumSecondHalf / (historyData.length - half || 1);
-      let trend = 0;
-      if (avgFirst > 0) {
-          trend = (((avgSecond - avgFirst) / avgFirst) * 100).toFixed(1);
+      if (prevAvg && prevAvg > 0 && currentAvg !== null) {
+          trendValue = (((currentAvg - prevAvg) / prevAvg) * 100).toFixed(1);
+      } else if (!prevAvg && currentAvg > 0) {
+          trendValue = 100;
       }
       
       const recordTimestamp = srv.status?.record_timestamp ? new Date(srv.status.record_timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Unknown';
       
+      // Filter daily data based on selected profileChartPeriod (7d or 30d)
+      let filteredDailyData = [...dailyData];
+      if (profileChartPeriod === '7d') {
+          filteredDailyData = filteredDailyData.slice(-7);
+      } else {
+          filteredDailyData = filteredDailyData.slice(-30);
+      }
+      
+      // Format dates for charts (e.g. "17/08")
+      filteredDailyData = filteredDailyData.map(d => {
+          const parts = d.date.split('-');
+          return {
+              ...d,
+              shortDate: `${parts[2]}/${parts[1]}`
+          }
+      });
+      
       return {
           server: srv,
-          maxPlayers,
-          uptime,
-          peakHour: `${peakHour}h00`,
-          trend,
-          volatility: avgVolatility,
+          peakHour: `${averagePeakHour}h00`,
+          trend: trendValue,
+          trendBasis: trendComparison === 'yesterday' ? 'vs Yesterday' : 'vs Last Week',
           recordAllTime: srv.status?.record_players || 0,
-          recordTimestamp
+          recordTimestamp,
+          dailyCharts: filteredDailyData
       };
-  }, [selectedServers, historyData, servers]);
+  }, [selectedServers, serverProfileData, servers, trendComparison, profileChartPeriod]);
 
   return (
     <div className="container">
@@ -300,9 +290,11 @@ export default function MCPEHome() {
 
       <div className="dashboard" style={{ gridTemplateColumns: selectedServers.length === 1 ? '380px 1fr' : undefined, gap: '2rem' }}>
         
-        {selectedServers.length === 1 && profileStats && (
-            <aside className="server-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div className="glass-panel" style={{ textAlign: 'center', position: 'relative', overflow: 'hidden', padding: 0 }}>
+        {selectedServers.length === 1 && (
+            <aside className="server-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                {profileStats ? (
+                <>
+                <div className="glass-panel" style={{ textAlign: 'center', position: 'relative', overflow: 'hidden', padding: 0, flexShrink: 0 }}>
                     {profileStats.server.banner && (
                         <div style={{ width: '100%', height: '100px', backgroundImage: `url(${profileStats.server.banner})`, backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.5 }}></div>
                     )}
@@ -333,7 +325,7 @@ export default function MCPEHome() {
                 <div className="glass-panel">
                     <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
                         <span>Advanced Stats</span>
-                        <span style={{ fontSize: '0.75rem', background: '#3b82f6', padding: '2px 8px', borderRadius: '12px' }}>{period}</span>
+                        {profileLoading && <span style={{ fontSize: '0.75rem', color: '#f59e0b' }}>Loading...</span>}
                     </h3>
                     <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -343,29 +335,69 @@ export default function MCPEHome() {
                                 <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>{profileStats.recordTimestamp}</div>
                             </div>
                         </li>
-                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>Peak ({period})</span>
-                            <strong style={{ fontSize: '1.1rem' }}>{profileStats.maxPlayers.toLocaleString()}</strong>
+                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} title="Moyenne de l'heure de pointe observée chaque jour">
+                            <span style={{ color: 'var(--text-secondary)', borderBottom: '1px dotted rgba(255,255,255,0.3)', cursor: 'help' }}>Peak Hour (?)</span>
+                            <strong style={{ color: '#3b82f6', fontSize: '1.1rem' }}>~ {profileStats.peakHour}</strong>
                         </li>
-                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>Uptime</span>
-                            <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>{profileStats.uptime}%</strong>
-                        </li>
-                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>Peak Hour</span>
-                            <strong style={{ color: '#3b82f6', fontSize: '1.1rem' }}>{profileStats.peakHour}</strong>
-                        </li>
-                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                             <span style={{ color: 'var(--text-secondary)' }}>Trend</span>
-                            <strong style={{ color: profileStats.trend > 0 ? '#10b981' : profileStats.trend < 0 ? '#ef4444' : 'white', fontSize: '1.1rem' }}>
-                                {profileStats.trend > 0 ? '+' : ''}{profileStats.trend}%
-                            </strong>
-                        </li>
-                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>Daily Volatility</span>
-                            <strong style={{ color: '#f59e0b', fontSize: '1.1rem' }}>± {profileStats.volatility}</strong>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <select 
+                                    value={trendComparison} 
+                                    onChange={(e) => setTrendComparison(e.target.value)}
+                                    style={{ background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px 4px', fontSize: '0.75rem', outline: 'none' }}
+                                >
+                                    <option value="yesterday">vs Yesterday</option>
+                                    <option value="lastWeek">vs Last Week</option>
+                                </select>
+                                <strong style={{ color: profileStats.trend > 0 ? '#10b981' : profileStats.trend < 0 ? '#ef4444' : 'white', fontSize: '1.1rem', minWidth: '60px', textAlign: 'right' }}>
+                                    {profileStats.trend > 0 ? '+' : ''}{profileStats.trend}%
+                                </strong>
+                            </div>
                         </li>
                     </ul>
+                </div>
+                
+                <div className="glass-panel">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+                        <h3 style={{ margin: 0 }}>Daily Analytics</h3>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                            {['7d', '30d'].map(p => (
+                                <button 
+                                    key={p} onClick={() => setProfileChartPeriod(p)}
+                                    style={{ background: profileChartPeriod === p ? '#f59e0b' : 'transparent', color: profileChartPeriod === p ? '#fff' : 'rgba(255,255,255,0.5)', border: 'none', borderRadius: '4px', padding: '2px 6px', fontSize: '0.75rem', cursor: 'pointer' }}
+                                >
+                                    {p}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Daily Peak Players</h4>
+                    <div style={{ width: '100%', height: '140px', marginBottom: '1.5rem' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={profileStats.dailyCharts} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} />
+                                <YAxis stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} />
+                                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }} itemStyle={{ color: '#ec4899', fontWeight: 'bold' }} />
+                                <Bar dataKey="maxPlayers" name="Peak Players" fill="#ec4899" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Daily Uptime (%)</h4>
+                    <div style={{ width: '100%', height: '100px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={profileStats.dailyCharts} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                                <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} />
+                                <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} />
+                                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }} itemStyle={{ color: '#10b981', fontWeight: 'bold' }} />
+                                <Area type="step" dataKey="uptimePercent" name="Uptime %" stroke="#10b981" fill="rgba(16,185,129,0.2)" strokeWidth={2} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
                 
                 <div className="glass-panel">
@@ -386,6 +418,13 @@ export default function MCPEHome() {
                         ))}
                     </div>
                 </div>
+                </>
+                ) : (
+                    <div className="glass-panel" style={{ textAlign: 'center', padding: '2rem' }}>
+                        <div className="loader" style={{ border: '4px solid rgba(255,255,255,0.1)', borderTop: '4px solid #3b82f6', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', margin: '0 auto 1rem auto' }}></div>
+                        <p style={{ color: 'var(--text-secondary)' }}>Loading deep analytics...</p>
+                    </div>
+                )}
             </aside>
         )}
         
