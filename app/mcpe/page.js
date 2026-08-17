@@ -368,10 +368,10 @@ export default function MCPEHome() {
         )}
       </header>
 
-      <div className="dashboard" style={{ gridTemplateColumns: profileHost ? '380px 1fr' : undefined, gap: '2rem' }}>
+      <div className="dashboard" style={{ gridTemplateColumns: profileHost ? '460px 1fr' : undefined, gap: '2rem', alignItems: 'start' }}>
         
         {profileHost && (
-            <aside className="server-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <aside className="server-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: '2rem', maxHeight: 'calc(100vh - 4rem)', overflowY: 'auto', paddingRight: '10px' }}>
                 {profileStats ? (
                 <>
                 <div className="glass-panel" style={{ textAlign: 'center', position: 'relative', overflow: 'hidden', padding: 0, flexShrink: 0 }}>
@@ -383,75 +383,92 @@ export default function MCPEHome() {
                         ×
                     </button>
                     {profileStats.server.banner && (
-                        <div style={{ width: '100%', height: '100px', backgroundImage: `url(${profileStats.server.banner})`, backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.5 }}></div>
+                        <div style={{ width: '100%', height: '80px', backgroundImage: `url(${profileStats.server.banner})`, backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.5 }}></div>
                     )}
-                    <div style={{ padding: '1.5rem', position: 'relative', marginTop: profileStats.server.banner ? '-50px' : '0' }}>
+                    <div style={{ padding: '1rem', position: 'relative', marginTop: profileStats.server.banner ? '-40px' : '0' }}>
                         {profileStats.server.logo && (
-                            <img src={profileStats.server.logo} style={{ width: 80, height: 80, borderRadius: '50%', border: '3px solid #1e293b', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', marginBottom: '1rem', background: '#1e293b' }} />
+                            <img src={profileStats.server.logo} style={{ width: 64, height: 64, borderRadius: '50%', border: '3px solid #1e293b', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', marginBottom: '0.5rem', background: '#1e293b' }} />
                         )}
-                        <h2 style={{ color: '#f59e0b', margin: '0 0 0.5rem 0', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{profileStats.server.name || profileStats.server.host}</h2>
-                        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', padding: '4px 12px', borderRadius: '12px', display: 'inline-block' }}>{profileStats.server.host}:{profileStats.server.port || 19132}</p>
+                        <h2 style={{ color: '#f59e0b', margin: '0 0 0.25rem 0', textShadow: '0 2px 4px rgba(0,0,0,0.5)', fontSize: '1.25rem' }}>{profileStats.server.name || profileStats.server.host}</h2>
+                        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.8rem', background: 'rgba(0,0,0,0.3)', padding: '2px 8px', borderRadius: '12px', display: 'inline-block' }}>{profileStats.server.host}:{profileStats.server.port || 19132}</p>
                         
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '1.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '1rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '12px' }}>
                             <div style={{ 
-                                width: 12, height: 12, borderRadius: '50%', 
+                                width: 10, height: 10, borderRadius: '50%', 
                                 background: profileStats.server.status?.online ? '#10b981' : '#ef4444', 
                                 animation: profileStats.server.status?.online ? 'pulse-dot 2s infinite' : 'pulse-dot-red 2s infinite' 
                             }}></div>
-                            <span style={{ fontWeight: 'bold', fontSize: '1.1rem', letterSpacing: '1px' }}>{profileStats.server.status?.online ? 'ONLINE' : 'OFFLINE'}</span>
+                            <span style={{ fontWeight: 'bold', fontSize: '0.9rem', letterSpacing: '1px' }}>{profileStats.server.status?.online ? 'ONLINE' : 'OFFLINE'}</span>
                         </div>
                         {profileStats.server.status?.online && (
-                            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', marginTop: '1rem', textShadow: '0 0 15px rgba(255,255,255,0.2)' }}>
-                                {profileStats.server.status.players} <span style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>/ {profileStats.server.status.max || '∞'}</span>
+                            <div style={{ fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem', textShadow: '0 0 15px rgba(255,255,255,0.2)' }}>
+                                {profileStats.server.status.players} <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/ {profileStats.server.status.max || '∞'}</span>
                             </div>
                         )}
                     </div>
                 </div>
                 
-                <div className="glass-panel">
-                    <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Advanced Stats</span>
-                        {profileLoading && <span style={{ fontSize: '0.75rem', color: '#f59e0b' }}>Loading...</span>}
-                    </h3>
-                    <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>All-Time Peak</span>
-                            <div style={{ textAlign: 'right' }}>
-                                <strong style={{ color: '#ec4899', fontSize: '1.2rem', textShadow: '0 0 10px rgba(236,72,153,0.3)' }}>{profileStats.recordAllTime.toLocaleString()}</strong>
-                                <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>{profileStats.recordTimestamp}</div>
-                            </div>
-                        </li>
-                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} title="Moyenne de l'heure de pointe observée chaque jour">
-                            <span style={{ color: 'var(--text-secondary)', borderBottom: '1px dotted rgba(255,255,255,0.3)', cursor: 'help' }}>Peak Hour (?)</span>
-                            <strong style={{ color: '#3b82f6', fontSize: '1.1rem' }}>~ {profileStats.peakHour}</strong>
-                        </li>
-                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>Trend</span>
-                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="glass-panel" style={{ padding: '1rem' }}>
+                        <h3 style={{ fontSize: '0.9rem', marginBottom: '0.8rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.4rem', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Stats</span>
+                            {profileLoading && <span style={{ fontSize: '0.7rem', color: '#f59e0b' }}>...</span>}
+                        </h3>
+                        <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.8rem' }}>
+                            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ color: 'var(--text-secondary)' }}>All-Time</span>
+                                <div style={{ textAlign: 'right' }}>
+                                    <strong style={{ color: '#ec4899', fontSize: '1rem', textShadow: '0 0 10px rgba(236,72,153,0.3)' }}>{profileStats.recordAllTime.toLocaleString()}</strong>
+                                </div>
+                            </li>
+                            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ color: 'var(--text-secondary)' }}>Peak Hour</span>
+                                <strong style={{ color: '#3b82f6' }}>~ {profileStats.peakHour}</strong>
+                            </li>
+                            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                                 <select 
                                     value={trendComparison} 
                                     onChange={(e) => setTrendComparison(e.target.value)}
-                                    style={{ background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px 4px', fontSize: '0.75rem', outline: 'none' }}
+                                    style={{ background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '1px 3px', fontSize: '0.7rem', outline: 'none' }}
                                 >
-                                    <option value="yesterday">vs Yesterday</option>
-                                    <option value="lastWeek">vs Last Week</option>
+                                    <option value="yesterday">vs Yday</option>
+                                    <option value="lastWeek">vs Week</option>
                                 </select>
-                                <strong style={{ color: profileStats.trend > 0 ? '#10b981' : profileStats.trend < 0 ? '#ef4444' : 'white', fontSize: '1.1rem', minWidth: '60px', textAlign: 'right' }}>
+                                <strong style={{ color: profileStats.trend > 0 ? '#10b981' : profileStats.trend < 0 ? '#ef4444' : 'white', fontSize: '0.9rem', textAlign: 'right' }}>
                                     {profileStats.trend > 0 ? '+' : ''}{profileStats.trend}%
                                 </strong>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div className="glass-panel" style={{ padding: '1rem' }}>
+                        <h3 style={{ fontSize: '0.9rem', marginBottom: '0.8rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.4rem' }}>Info</h3>
+                        
+                        {profileStats.server.country && profileStats.server.country !== 'unknown' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.8rem', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', borderRadius: '8px' }}>
+                                <img src={`https://flagcdn.com/w20/${profileStats.server.country.toLowerCase()}.png`} width="20" alt={profileStats.server.country} style={{ borderRadius: '2px' }} />
+                                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{profileStats.server.country}</span>
                             </div>
-                        </li>
-                    </ul>
+                        )}
+                        
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {(profileStats.server.gameModes || ['survival']).slice(0,4).map(gm => (
+                                <span key={gm} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'capitalize', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                                    {gm}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
                 </div>
                 
-                <div className="glass-panel">
+                <div className="glass-panel" style={{ padding: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
-                        <h3 style={{ margin: 0 }}>Daily Analytics</h3>
+                        <h3 style={{ margin: 0, fontSize: '0.9rem' }}>Daily Analytics</h3>
                         <div style={{ display: 'flex', gap: '4px' }}>
                             {['7d', '30d'].map(p => (
                                 <button 
                                     key={p} onClick={() => setProfileChartPeriod(p)}
-                                    style={{ background: profileChartPeriod === p ? '#f59e0b' : 'transparent', color: profileChartPeriod === p ? '#fff' : 'rgba(255,255,255,0.5)', border: 'none', borderRadius: '4px', padding: '2px 6px', fontSize: '0.75rem', cursor: 'pointer' }}
+                                    style={{ background: profileChartPeriod === p ? '#f59e0b' : 'transparent', color: profileChartPeriod === p ? '#fff' : 'rgba(255,255,255,0.5)', border: 'none', borderRadius: '4px', padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
                                 >
                                     {p}
                                 </button>
@@ -459,49 +476,34 @@ export default function MCPEHome() {
                         </div>
                     </div>
                     
-                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Daily Peak Players</h4>
-                    <div style={{ width: '100%', height: '140px', marginBottom: '1.5rem' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={profileStats.dailyCharts} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} />
-                                <YAxis stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} />
-                                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }} itemStyle={{ color: '#ec4899', fontWeight: 'bold' }} />
-                                <Bar dataKey="maxPlayers" name="Peak Players" fill="#ec4899" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Daily Uptime (%)</h4>
-                    <div style={{ width: '100%', height: '100px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={profileStats.dailyCharts} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} />
-                                <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 10}} />
-                                <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }} itemStyle={{ color: '#10b981', fontWeight: 'bold' }} />
-                                <Area type="step" dataKey="uptimePercent" name="Uptime %" stroke="#10b981" fill="rgba(16,185,129,0.2)" strokeWidth={2} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-                
-                <div className="glass-panel">
-                    <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Information</h3>
-                    
-                    {profileStats.server.country && profileStats.server.country !== 'unknown' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', background: 'rgba(255,255,255,0.05)', padding: '0.8rem', borderRadius: '12px' }}>
-                            <img src={`https://flagcdn.com/w40/${profileStats.server.country.toLowerCase()}.png`} width="32" alt={profileStats.server.country} style={{ borderRadius: '4px' }} />
-                            <span style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{profileStats.server.country}</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div>
+                            <h4 style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Peaks</h4>
+                            <div style={{ width: '100%', height: '100px' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={profileStats.dailyCharts} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                                        <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
+                                        <YAxis stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
+                                        <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '4px', fontSize: '10px' }} />
+                                        <Bar dataKey="maxPlayers" name="Peak" fill="#ec4899" radius={[2, 2, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
-                    )}
-                    
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {(profileStats.server.gameModes || ['survival']).map(gm => (
-                            <span key={gm} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '6px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'capitalize', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                                {gm}
-                            </span>
-                        ))}
+
+                        <div>
+                            <h4 style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Uptime</h4>
+                            <div style={{ width: '100%', height: '100px' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={profileStats.dailyCharts} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                                        <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
+                                        <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
+                                        <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '4px', fontSize: '10px' }} />
+                                        <Area type="step" dataKey="uptimePercent" name="Uptime" stroke="#10b981" fill="rgba(16,185,129,0.2)" strokeWidth={2} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 </>
