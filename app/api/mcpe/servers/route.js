@@ -23,7 +23,7 @@ export async function GET() {
     // Sort by players
     formattedServers.sort((a, b) => b.players - a.players);
     
-    const totalPlayers = formattedServers.reduce((sum, srv) => sum + srv.players, 0);
+    const totalPlayers = formattedServers.filter(s => !s.is_affiliated).reduce((sum, srv) => sum + srv.players, 0);
     // Fetch last history entry to get precise lastUpdated time
     const { data: histData } = await supabase
         .from('mcpe_history')
