@@ -181,7 +181,7 @@ export default function MCPEHome() {
       displayServersCount = displayedServers.length;
       statLabel = "Players online (Country Filter) / Filtered Servers";
   } else {
-      displayPlayers = totalPlayers;
+      displayPlayers = servers.filter(s => !s.is_affiliated).reduce((sum, srv) => sum + (srv.status?.players || 0), 0);
       displayServersCount = servers.filter(s => !s.is_affiliated).length;
   }
 
@@ -203,6 +203,8 @@ export default function MCPEHome() {
   }, [selectedCountries, allSortedNations]);
 
   const chartData = useMemo(() => {
+    const validHosts = new Set(servers.filter(s => !s.is_affiliated).map(s => s.host));
+
     return historyData.map(point => {
         let entry = { timeLabel: point.timeLabel };
         
@@ -218,7 +220,17 @@ export default function MCPEHome() {
             });
             entry.totalPlayers = sum;
         } else {
-            entry.totalPlayers = point.totalPlayers;
+            let sum = 0;
+            if (point.serverData && Object.keys(point.serverData).length > 0) {
+                for (const [host, players] of Object.entries(point.serverData)) {
+                    if (validHosts.has(host)) {
+                        sum += players;
+                    }
+                }
+                entry.totalPlayers = sum;
+            } else {
+                entry.totalPlayers = point.totalPlayers;
+            }
         }
         
         return entry;
