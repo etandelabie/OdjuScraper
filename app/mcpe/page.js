@@ -20,6 +20,50 @@ export default function MCPEHome() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [trendComparison, setTrendComparison] = useState('yesterday'); // 'yesterday', 'lastWeek'
   const [profileChartPeriod, setProfileChartPeriod] = useState('7d'); // '7d', '30d'
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    try {
+        const savedCountries = localStorage.getItem('mcpe_selectedCountries');
+        if (savedCountries) setSelectedCountries(JSON.parse(savedCountries));
+        
+        const savedServers = localStorage.getItem('mcpe_selectedServers');
+        if (savedServers) setSelectedServers(JSON.parse(savedServers));
+        
+        const savedProfileHost = localStorage.getItem('mcpe_profileHost');
+        if (savedProfileHost) setProfileHost(savedProfileHost);
+        
+        const savedTrend = localStorage.getItem('mcpe_trendComparison');
+        if (savedTrend) setTrendComparison(savedTrend);
+        
+        const savedChartPeriod = localStorage.getItem('mcpe_profileChartPeriod');
+        if (savedChartPeriod) setProfileChartPeriod(savedChartPeriod);
+    } catch(e) { console.error("Error loading state from localStorage", e); }
+  }, []);
+
+  useEffect(() => {
+    if (isClient) localStorage.setItem('mcpe_selectedCountries', JSON.stringify(selectedCountries));
+  }, [selectedCountries, isClient]);
+
+  useEffect(() => {
+    if (isClient) localStorage.setItem('mcpe_selectedServers', JSON.stringify(selectedServers));
+  }, [selectedServers, isClient]);
+
+  useEffect(() => {
+    if (isClient) {
+      if (profileHost) localStorage.setItem('mcpe_profileHost', profileHost);
+      else localStorage.removeItem('mcpe_profileHost');
+    }
+  }, [profileHost, isClient]);
+
+  useEffect(() => {
+    if (isClient) localStorage.setItem('mcpe_trendComparison', trendComparison);
+  }, [trendComparison, isClient]);
+
+  useEffect(() => {
+    if (isClient) localStorage.setItem('mcpe_profileChartPeriod', profileChartPeriod);
+  }, [profileChartPeriod, isClient]);
 
   const fetchServers = async () => {
     try {
