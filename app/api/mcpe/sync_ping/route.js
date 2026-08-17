@@ -55,8 +55,8 @@ export async function GET(req) {
         const chunkSize = 30;
         let updatedServers = [];
 
-        for (let i = 0; i < servers.length; i += chunkSize) {
-            const chunk = servers.slice(i, i + chunkSize);
+        for (let i = 0; i < validServers.length; i += chunkSize) {
+            const chunk = validServers.slice(i, i + chunkSize);
             const pingPromises = chunk.map(server => {
                 const port = parseInt(server.port) || 19132;
                 return util.statusBedrock(server.host, port, { timeout: 3000, enableSRV: true })
@@ -66,7 +66,7 @@ export async function GET(req) {
                         const isNewRecord = currentPlayers > oldRecord;
 
                         return {
-                            ...server,
+                            host: server.host,
                             status: {
                                 online: true,
                                 players: currentPlayers,
@@ -75,18 +75,20 @@ export async function GET(req) {
                                 ping: res.roundTripLatency || 0,
                                 record_players: isNewRecord ? currentPlayers : oldRecord,
                                 record_timestamp: isNewRecord ? new Date().toISOString() : (server.status?.record_timestamp || new Date().toISOString())
-                            }
+                            },
+                            is_affiliated: server.is_affiliated // keep it for the total calculation later
                         };
                     })
                     .catch(() => ({
-                        ...server,
+                        host: server.host,
                         status: {
                             online: false,
                             players: 0,
                             max: 0,
                             record_players: server.status?.record_players || 0,
                             record_timestamp: server.status?.record_timestamp || new Date().toISOString()
-                        }
+                        },
+                        is_affiliated: server.is_affiliated
                     }));
             });
             const chunkResults = await Promise.all(pingPromises);
@@ -94,10 +96,22 @@ export async function GET(req) {
         }
 
         // 3. Update Supabase
-        // Pour éviter de faire 100 requêtes, on utilise upsert en bulk
+        // Pour éviter de faire 100 requêtes, on utilise upsert en bulk.
+        // On re-vérifie les serveurs qui existent encore pour ne pas ressusciter ceux supprimés (bannis) pendant le ping.
+        const { data: currentServers } = await supabase.from('mcpe_servers').select('host');
+        const currentHosts = currentServers ? currentServers.map(s => s.host) : [];
+        
+        const finalUpsertList = updatedServers
+            .filter(s => currentHosts.includes(s.host))
+            .map(s => ({
+                host: s.host,
+                status: s.status,
+                updated_at: new Date().toISOString()
+            }));
+
         const { error: upsertError } = await supabase
             .from('mcpe_servers')
-            .upsert(updatedServers, { onConflict: 'host' });
+            .upsert(finalUpsertList, { onConflict: 'host' });
 
         if (upsertError) throw upsertError;
 
