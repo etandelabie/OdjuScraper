@@ -11,6 +11,7 @@ export default function MCPEHome() {
   const [historyData, setHistoryData] = useState([]);
   const [selectedCountries, setSelectedCountries] = useState([]);
   const [selectedServers, setSelectedServers] = useState([]);
+  const [showAllNations, setShowAllNations] = useState(false);
 
   const fetchServers = async () => {
     try {
@@ -75,21 +76,15 @@ export default function MCPEHome() {
   }, []);
 
   const nationsCount = {};
-  const gameModesCount = {};
   servers.forEach(s => {
     const players = s.status?.players || 0;
     if (s.country && s.country !== 'unknown') {
         nationsCount[s.country] = (nationsCount[s.country] || 0) + players;
     }
-    const gms = s.gameModes && s.gameModes.length > 0 ? s.gameModes : ['other'];
-    gms.forEach(gm => {
-        const modeUpper = gm.toUpperCase();
-        gameModesCount[modeUpper] = (gameModesCount[modeUpper] || 0) + players;
-    });
   });
   
-  const topNations = Object.entries(nationsCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const topGameModes = Object.entries(gameModesCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const allSortedNations = Object.entries(nationsCount).sort((a, b) => b[1] - a[1]);
+  const displayedNations = showAllNations ? allSortedNations : allSortedNations.slice(0, 5);
 
   const availableCountries = Object.keys(nationsCount).sort();
   const displayedServers = servers.filter(s => selectedCountries.length === 0 || selectedCountries.includes(s.country));
@@ -427,30 +422,41 @@ export default function MCPEHome() {
 
         <aside>
           <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem', color: '#f59e0b' }}>🏆 Trends (Top 5)</h2>
+            <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem', color: '#f59e0b' }}>🏆 Top Nations</h2>
             
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', marginTop: '1rem' }}>Top Nations</h3>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {topNations.map(([country, count]) => (
-                <li key={country} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.9rem' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <img src={`https://flagcdn.com/w20/${country.toLowerCase()}.png`} width="16" alt={country} style={{ borderRadius: '2px' }} /> 
+              {displayedNations.map(([country, count]) => (
+                <li key={country} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <img src={`https://flagcdn.com/w20/${country.toLowerCase()}.png`} width="18" alt={country} style={{ borderRadius: '2px' }} /> 
                     {country}
                   </span>
                   <span style={{ fontWeight: 'bold', color: 'var(--text-secondary)' }}>{count.toLocaleString()}</span>
                 </li>
               ))}
             </ul>
-
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', marginTop: '1.5rem' }}>Top Game Modes</h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {topGameModes.map(([mode, count]) => (
-                <li key={mode} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem', fontSize: '0.9rem' }}>
-                  <span style={{ textTransform: 'capitalize' }}>{mode}</span>
-                  <span style={{ fontWeight: 'bold', color: 'var(--text-secondary)' }}>{count.toLocaleString()}</span>
-                </li>
-              ))}
-            </ul>
+            
+            {allSortedNations.length > 5 && (
+              <button 
+                onClick={() => setShowAllNations(!showAllNations)}
+                style={{
+                  width: '100%',
+                  marginTop: '1rem',
+                  padding: '0.5rem',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '8px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+              >
+                {showAllNations ? 'See Less ▲' : `See All (${allSortedNations.length}) ▼`}
+              </button>
+            )}
           </div>
           
           <div className="glass-panel">
