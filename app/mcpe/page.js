@@ -478,8 +478,8 @@ export default function MCPEHome() {
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div>
-                            <h4 style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Peaks</h4>
-                            <div style={{ width: '100%', height: '100px' }}>
+                            <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Peaks</h4>
+                            <div style={{ width: '100%', height: '160px' }}>
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={profileStats.dailyCharts} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
                                         <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
@@ -492,8 +492,8 @@ export default function MCPEHome() {
                         </div>
 
                         <div>
-                            <h4 style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Uptime</h4>
-                            <div style={{ width: '100%', height: '100px' }}>
+                            <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Uptime</h4>
+                            <div style={{ width: '100%', height: '160px' }}>
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={profileStats.dailyCharts} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
                                         <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
