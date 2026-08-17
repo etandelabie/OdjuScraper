@@ -177,8 +177,9 @@ export default function MCPEHome() {
       displayServersCount = selectedServers.length;
       statLabel = "Players online (Selection) / Selected Servers";
   } else if (selectedCountries.length > 0) {
-      displayPlayers = displayedServers.reduce((sum, srv) => sum + (srv.status?.players || 0), 0);
-      displayServersCount = displayedServers.length;
+      const filteredCountryServers = displayedServers.filter(s => !s.is_affiliated);
+      displayPlayers = filteredCountryServers.reduce((sum, srv) => sum + (srv.status?.players || 0), 0);
+      displayServersCount = filteredCountryServers.length;
       statLabel = "Players online (Country Filter) / Filtered Servers";
   } else {
       displayPlayers = servers.filter(s => !s.is_affiliated).reduce((sum, srv) => sum + (srv.status?.players || 0), 0);
@@ -189,7 +190,7 @@ export default function MCPEHome() {
       if (selectedServers.length > 0) return selectedServers.slice(0, 10);
       if (selectedCountries.length === 1) {
           return servers
-              .filter(s => s.country === selectedCountries[0])
+              .filter(s => s.country === selectedCountries[0] && !s.is_affiliated)
               .sort((a, b) => (b.status?.players || 0) - (a.status?.players || 0))
               .slice(0, 10)
               .map(s => s.host);
@@ -214,7 +215,7 @@ export default function MCPEHome() {
             });
         } else if (selectedCountries.length > 1) {
             let sum = 0;
-            const countryServers = servers.filter(s => selectedCountries.includes(s.country)).map(s => s.host);
+            const countryServers = servers.filter(s => selectedCountries.includes(s.country) && !s.is_affiliated).map(s => s.host);
             countryServers.forEach(host => {
                 sum += (point.serverData[host] || 0);
             });
@@ -243,6 +244,7 @@ export default function MCPEHome() {
      
      const serversByCountry = {};
      servers.forEach(s => {
+         if (s.is_affiliated) return;
          if (!serversByCountry[s.country]) serversByCountry[s.country] = [];
          serversByCountry[s.country].push(s.host);
      });
