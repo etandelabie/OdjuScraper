@@ -136,12 +136,21 @@ export default function MCPEHome() {
   }
 
   const chartLines = useMemo(() => {
-      if (selectedServers.length > 0) return selectedServers;
+      if (selectedServers.length > 0) return selectedServers.slice(0, 10);
       if (selectedCountries.length === 1) {
-          return servers.filter(s => s.country === selectedCountries[0]).map(s => s.host);
+          return servers
+              .filter(s => s.country === selectedCountries[0])
+              .sort((a, b) => (b.status?.players || 0) - (a.status?.players || 0))
+              .slice(0, 10)
+              .map(s => s.host);
       }
       return [];
   }, [selectedServers, selectedCountries, servers]);
+
+  const nationsToRender = useMemo(() => {
+      if (selectedCountries.length > 0) return selectedCountries.slice(0, 10);
+      return allSortedNations.slice(0, 10).map(([country]) => country);
+  }, [selectedCountries, allSortedNations]);
 
   const chartData = useMemo(() => {
     return historyData.map(point => {
@@ -168,7 +177,7 @@ export default function MCPEHome() {
 
   const nationsChartData = useMemo(() => {
      if (availableCountries.length === 0) return [];
-     const nationsKeys = selectedCountries.length > 0 ? selectedCountries : availableCountries;
+     const nationsKeys = nationsToRender;
      
      const serversByCountry = {};
      servers.forEach(s => {
@@ -282,7 +291,7 @@ export default function MCPEHome() {
                                 itemSorter={(item) => -item.value}
                             />
                             <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                            {(selectedCountries.length > 0 ? selectedCountries : availableCountries).map((nation, i) => (
+                            {nationsToRender.map((nation, i) => (
                                 <Line key={nation} type="monotone" dataKey={nation} name={nation.toUpperCase()} stroke={colors[i % colors.length]} strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
                             ))}
                         </LineChart>
