@@ -11,6 +11,7 @@ export default function MCPEHome() {
   const [historyData, setHistoryData] = useState([]);
   const [selectedCountries, setSelectedCountries] = useState([]);
   const [selectedServers, setSelectedServers] = useState([]);
+  const [profileHost, setProfileHost] = useState(null);
   const [showAllNations, setShowAllNations] = useState(false);
   const [period, setPeriod] = useState('24h');
   
@@ -92,10 +93,9 @@ export default function MCPEHome() {
   }, [period]);
 
   useEffect(() => {
-      if (selectedServers.length === 1) {
-          const host = selectedServers[0];
+      if (profileHost) {
           setProfileLoading(true);
-          fetch(`/api/mcpe/server_profile?host=${host}`)
+          fetch(`/api/mcpe/server_profile?host=${profileHost}`)
               .then(res => res.json())
               .then(data => {
                   if (data.success) {
@@ -110,7 +110,7 @@ export default function MCPEHome() {
       } else {
           setServerProfileData(null);
       }
-  }, [selectedServers]);
+  }, [profileHost]);
 
   const nationsCount = {};
   servers.forEach(s => {
@@ -228,9 +228,8 @@ export default function MCPEHome() {
   const colors = ["#f59e0b", "#3b82f6", "#10b981", "#ec4899", "#8b5cf6", "#ef4444", "#14b8a6", "#f97316"];
 
   const profileStats = useMemo(() => {
-      if (selectedServers.length !== 1 || !serverProfileData) return null;
-      const host = selectedServers[0];
-      const srv = servers.find(s => s.host === host);
+      if (!profileHost || !serverProfileData) return null;
+      const srv = servers.find(s => s.host === profileHost);
       if (!srv) return null;
       
       const { dailyData, averagePeakHour, trends } = serverProfileData;
@@ -274,7 +273,7 @@ export default function MCPEHome() {
           recordTimestamp,
           dailyCharts: filteredDailyData
       };
-  }, [selectedServers, serverProfileData, servers, trendComparison, profileChartPeriod]);
+  }, [profileHost, serverProfileData, servers, trendComparison, profileChartPeriod]);
 
   return (
     <div className="container">
@@ -288,13 +287,20 @@ export default function MCPEHome() {
         )}
       </header>
 
-      <div className="dashboard" style={{ gridTemplateColumns: selectedServers.length === 1 ? '380px 1fr' : undefined, gap: '2rem' }}>
+      <div className="dashboard" style={{ gridTemplateColumns: profileHost ? '380px 1fr' : undefined, gap: '2rem' }}>
         
-        {selectedServers.length === 1 && (
+        {profileHost && (
             <aside className="server-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 {profileStats ? (
                 <>
                 <div className="glass-panel" style={{ textAlign: 'center', position: 'relative', overflow: 'hidden', padding: 0, flexShrink: 0 }}>
+                    <button 
+                        onClick={() => setProfileHost(null)}
+                        style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(239, 68, 68, 0.8)', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}
+                        title="Close Profile"
+                    >
+                        ×
+                    </button>
                     {profileStats.server.banner && (
                         <div style={{ width: '100%', height: '100px', backgroundImage: `url(${profileStats.server.banner})`, backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.5 }}></div>
                     )}
@@ -644,6 +650,32 @@ export default function MCPEHome() {
                         <span className="status-badge status-offline">OFFLINE</span>
                       )}
                       
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setProfileHost(server.host);
+                            }}
+                            title="View Server Profile"
+                            style={{
+                               marginLeft: '15px',
+                               background: 'rgba(59, 130, 246, 0.2)',
+                               border: '1px solid rgba(59, 130, 246, 0.5)',
+                               color: '#3b82f6',
+                               borderRadius: '50%',
+                               width: '32px',
+                               height: '32px',
+                               display: 'flex',
+                               alignItems: 'center',
+                               justifyContent: 'center',
+                               cursor: 'pointer',
+                               transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'; e.currentTarget.style.color = '#3b82f6'; }}
+                          >
+                            👤
+                          </button>
                       <button 
                         onClick={(e) => handleBanServer(server.host, e)}
                         title="Report as Fake/Cross-play (Delete)"
@@ -661,11 +693,12 @@ export default function MCPEHome() {
                            cursor: 'pointer',
                            transition: 'all 0.2s'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#ef4444'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; e.currentTarget.style.color = '#ef4444'; }}
                       >
                          🗑️
                       </button>
+                      </div>
                     </div>
                   </li>
                 )})}
