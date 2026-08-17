@@ -33,22 +33,32 @@ export async function GET(req) {
             const pingPromises = chunk.map(server => {
                 const port = parseInt(server.port) || 19132;
                 return util.statusBedrock(server.host, port, { timeout: 3000, enableSRV: true })
-                    .then(res => ({
-                        ...server,
-                        status: {
-                            online: true,
-                            players: res.players.online,
-                            max: res.players.max,
-                            motd: res.motd.clean,
-                            ping: res.roundTripLatency || 0
-                        }
-                    }))
+                    .then(res => {
+                        const oldRecord = server.status?.record_players || 0;
+                        const currentPlayers = res.players.online;
+                        const isNewRecord = currentPlayers > oldRecord;
+                        
+                        return {
+                            ...server,
+                            status: {
+                                online: true,
+                                players: currentPlayers,
+                                max: res.players.max,
+                                motd: res.motd.clean,
+                                ping: res.roundTripLatency || 0,
+                                record_players: isNewRecord ? currentPlayers : oldRecord,
+                                record_timestamp: isNewRecord ? new Date().toISOString() : (server.status?.record_timestamp || new Date().toISOString())
+                            }
+                        };
+                    })
                     .catch(() => ({
                         ...server,
                         status: {
                             online: false,
                             players: 0,
-                            max: 0
+                            max: 0,
+                            record_players: server.status?.record_players || 0,
+                            record_timestamp: server.status?.record_timestamp || new Date().toISOString()
                         }
                     }));
             });

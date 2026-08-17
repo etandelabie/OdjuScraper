@@ -200,6 +200,92 @@ export default function MCPEHome() {
 
   const colors = ["#f59e0b", "#3b82f6", "#10b981", "#ec4899", "#8b5cf6", "#ef4444", "#14b8a6", "#f97316"];
 
+  const profileStats = useMemo(() => {
+      if (selectedServers.length !== 1 || historyData.length === 0) return null;
+      const host = selectedServers[0];
+      const srv = servers.find(s => s.host === host);
+      if (!srv) return null;
+      
+      let maxPlayers = 0;
+      let minPlayers = Infinity;
+      let sumPlayers = 0;
+      let uptimePoints = 0;
+      
+      const hourlyAverages = Array(24).fill(0).map(() => ({ sum: 0, count: 0 }));
+      
+      let dailyStats = {}; // { 'YYYY-MM-DD': { max: 0, min: Infinity } }
+      
+      historyData.forEach(point => {
+          const players = point.serverData[host] || 0;
+          if (players > maxPlayers) maxPlayers = players;
+          if (players < minPlayers) minPlayers = players;
+          sumPlayers += players;
+          if (players > 0) uptimePoints++;
+          
+          const date = new Date(point.timestamp);
+          const hour = date.getHours();
+          hourlyAverages[hour].sum += players;
+          hourlyAverages[hour].count++;
+          
+          const dayKey = date.toISOString().split('T')[0];
+          if (!dailyStats[dayKey]) dailyStats[dayKey] = { max: 0, min: Infinity };
+          if (players > dailyStats[dayKey].max) dailyStats[dayKey].max = players;
+          if (players < dailyStats[dayKey].min) dailyStats[dayKey].min = players;
+      });
+      
+      if (minPlayers === Infinity) minPlayers = 0;
+      
+      let totalVolatility = 0;
+      let daysCount = 0;
+      Object.values(dailyStats).forEach(ds => {
+          if (ds.min !== Infinity) {
+              totalVolatility += (ds.max - ds.min);
+              daysCount++;
+          }
+      });
+      const avgVolatility = daysCount > 0 ? Math.round(totalVolatility / daysCount) : 0;
+      
+      const uptime = ((uptimePoints / historyData.length) * 100).toFixed(1);
+      
+      let peakHour = 0;
+      let maxAvg = 0;
+      hourlyAverages.forEach((h, i) => {
+          const avg = h.count > 0 ? h.sum / h.count : 0;
+          if (avg > maxAvg) {
+              maxAvg = avg;
+              peakHour = i;
+          }
+      });
+      
+      const half = Math.floor(historyData.length / 2);
+      let sumFirstHalf = 0;
+      let sumSecondHalf = 0;
+      for (let i = 0; i < historyData.length; i++) {
+          const p = historyData[i].serverData[host] || 0;
+          if (i < half) sumFirstHalf += p;
+          else sumSecondHalf += p;
+      }
+      const avgFirst = sumFirstHalf / (half || 1);
+      const avgSecond = sumSecondHalf / (historyData.length - half || 1);
+      let trend = 0;
+      if (avgFirst > 0) {
+          trend = (((avgSecond - avgFirst) / avgFirst) * 100).toFixed(1);
+      }
+      
+      const recordTimestamp = srv.status?.record_timestamp ? new Date(srv.status.record_timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Unknown';
+      
+      return {
+          server: srv,
+          maxPlayers,
+          uptime,
+          peakHour: `${peakHour}h00`,
+          trend,
+          volatility: avgVolatility,
+          recordAllTime: srv.status?.record_players || 0,
+          recordTimestamp
+      };
+  }, [selectedServers, historyData, servers]);
+
   return (
     <div className="container">
       <header className="header">
@@ -212,7 +298,97 @@ export default function MCPEHome() {
         )}
       </header>
 
-      <div className="dashboard">
+      <div className="dashboard" style={{ gridTemplateColumns: selectedServers.length === 1 ? '380px 1fr' : undefined, gap: '2rem' }}>
+        
+        {selectedServers.length === 1 && profileStats && (
+            <aside className="server-profile" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div className="glass-panel" style={{ textAlign: 'center', position: 'relative', overflow: 'hidden', padding: 0 }}>
+                    {profileStats.server.banner && (
+                        <div style={{ width: '100%', height: '100px', backgroundImage: `url(${profileStats.server.banner})`, backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.5 }}></div>
+                    )}
+                    <div style={{ padding: '1.5rem', position: 'relative', marginTop: profileStats.server.banner ? '-50px' : '0' }}>
+                        {profileStats.server.logo && (
+                            <img src={profileStats.server.logo} style={{ width: 80, height: 80, borderRadius: '50%', border: '3px solid #1e293b', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', marginBottom: '1rem', background: '#1e293b' }} />
+                        )}
+                        <h2 style={{ color: '#f59e0b', margin: '0 0 0.5rem 0', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{profileStats.server.name || profileStats.server.host}</h2>
+                        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem', background: 'rgba(0,0,0,0.3)', padding: '4px 12px', borderRadius: '12px', display: 'inline-block' }}>{profileStats.server.host}:{profileStats.server.port || 19132}</p>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '1.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '12px' }}>
+                            <div style={{ 
+                                width: 12, height: 12, borderRadius: '50%', 
+                                background: profileStats.server.status?.online ? '#10b981' : '#ef4444', 
+                                animation: profileStats.server.status?.online ? 'pulse-dot 2s infinite' : 'pulse-dot-red 2s infinite' 
+                            }}></div>
+                            <span style={{ fontWeight: 'bold', fontSize: '1.1rem', letterSpacing: '1px' }}>{profileStats.server.status?.online ? 'ONLINE' : 'OFFLINE'}</span>
+                        </div>
+                        {profileStats.server.status?.online && (
+                            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', marginTop: '1rem', textShadow: '0 0 15px rgba(255,255,255,0.2)' }}>
+                                {profileStats.server.status.players} <span style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>/ {profileStats.server.status.max || '∞'}</span>
+                            </div>
+                        )}
+                        <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Version: <span style={{color: '#fff'}}>{profileStats.server.version?.name || 'Unknown'}</span></p>
+                    </div>
+                </div>
+                
+                <div className="glass-panel">
+                    <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Advanced Stats</span>
+                        <span style={{ fontSize: '0.75rem', background: '#3b82f6', padding: '2px 8px', borderRadius: '12px' }}>{period}</span>
+                    </h3>
+                    <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>All-Time Peak</span>
+                            <div style={{ textAlign: 'right' }}>
+                                <strong style={{ color: '#ec4899', fontSize: '1.2rem', textShadow: '0 0 10px rgba(236,72,153,0.3)' }}>{profileStats.recordAllTime.toLocaleString()}</strong>
+                                <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>{profileStats.recordTimestamp}</div>
+                            </div>
+                        </li>
+                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Peak ({period})</span>
+                            <strong style={{ fontSize: '1.1rem' }}>{profileStats.maxPlayers.toLocaleString()}</strong>
+                        </li>
+                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Uptime</span>
+                            <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>{profileStats.uptime}%</strong>
+                        </li>
+                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Peak Hour</span>
+                            <strong style={{ color: '#3b82f6', fontSize: '1.1rem' }}>{profileStats.peakHour}</strong>
+                        </li>
+                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Trend</span>
+                            <strong style={{ color: profileStats.trend > 0 ? '#10b981' : profileStats.trend < 0 ? '#ef4444' : 'white', fontSize: '1.1rem' }}>
+                                {profileStats.trend > 0 ? '+' : ''}{profileStats.trend}%
+                            </strong>
+                        </li>
+                        <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Daily Volatility</span>
+                            <strong style={{ color: '#f59e0b', fontSize: '1.1rem' }}>± {profileStats.volatility}</strong>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div className="glass-panel">
+                    <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>Information</h3>
+                    
+                    {profileStats.server.country && profileStats.server.country !== 'unknown' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', background: 'rgba(255,255,255,0.05)', padding: '0.8rem', borderRadius: '12px' }}>
+                            <img src={`https://flagcdn.com/w40/${profileStats.server.country.toLowerCase()}.png`} width="32" alt={profileStats.server.country} style={{ borderRadius: '4px' }} />
+                            <span style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{profileStats.server.country}</span>
+                        </div>
+                    )}
+                    
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {(profileStats.server.gameModes || ['survival']).map(gm => (
+                            <span key={gm} style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '6px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'capitalize', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                                {gm}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            </aside>
+        )}
+        
         <main>
           <div className="glass-panel" style={{ border: selectedServers.length > 0 ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.1)' }}>
             <div className="stat-box">
@@ -463,6 +639,7 @@ export default function MCPEHome() {
           </div>
         </main>
 
+        {selectedServers.length !== 1 && (
         <aside>
           <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
             <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem', color: '#f59e0b' }}>🏆 Top Nations</h2>
@@ -514,6 +691,7 @@ export default function MCPEHome() {
             </ul>
           </div>
         </aside>
+        )}
       </div>
     </div>
   );
