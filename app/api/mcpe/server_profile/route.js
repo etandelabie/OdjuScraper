@@ -17,7 +17,7 @@ export async function GET(req) {
     const startTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
 
     const { data: history, error } = await supabase
-        .rpc('get_mcpe_history_sampled', { start_time: startTime, interval_minutes: intervalMinutes });
+        .rpc('get_server_history', { p_start_time: startTime, p_host: host });
         
     if (error) {
         return NextResponse.json({ success: false, error: error.message });
@@ -31,7 +31,7 @@ export async function GET(req) {
     let now = Date.now();
     
     history.forEach(point => {
-        const players = point.server_data[host] || 0;
+        const players = point.players || 0;
         const date = new Date(point.timestamp);
         const dayKey = date.toISOString().split('T')[0];
         
@@ -56,7 +56,7 @@ export async function GET(req) {
     // Find the peak hour of each day
     const dailyHours = {}; // { 'YYYY-MM-DD': { 0: sum, 1: sum, ... } }
     history.forEach(point => {
-        const players = point.server_data[host] || 0;
+        const players = point.players || 0;
         const date = new Date(point.timestamp);
         const dayKey = date.toISOString().split('T')[0];
         const hour = date.getHours();
@@ -105,7 +105,7 @@ export async function GET(req) {
         history.forEach(point => {
             const time = new Date(point.timestamp).getTime();
             if (time >= start && time < end) {
-                sum += (point.server_data[host] || 0);
+                sum += (point.players || 0);
                 count++;
             }
         });
