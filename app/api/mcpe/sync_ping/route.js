@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabaseClient';
 import util from 'minecraft-server-util';
 
-export const maxDuration = 10; // Vercel hobby limit
+export const maxDuration = 60; // Vercel hobby limit extended
 export const dynamic = 'force-dynamic'; // Désactiver le cache
 
 export async function GET(req) {
@@ -23,32 +23,38 @@ export async function GET(req) {
             
         if (fetchError) throw fetchError;
         
-        // 2. Ping concurrent
+        // 2. Ping par paquets (chunks) pour éviter de saturer le réseau de Vercel (UDP packet drop)
         const start = Date.now();
-        const pingPromises = servers.map(server => {
-            const port = parseInt(server.port) || 19132;
-            return util.statusBedrock(server.host, port, { timeout: 3000, enableSRV: true })
-                .then(res => ({
-                    ...server,
-                    status: {
-                        online: true,
-                        players: res.players.online,
-                        max: res.players.max,
-                        motd: res.motd.clean,
-                        ping: res.roundTripLatency || 0
-                    }
-                }))
-                .catch(() => ({
-                    ...server,
-                    status: {
-                        online: false,
-                        players: 0,
-                        max: 0
-                    }
-                }));
-        });
+        const chunkSize = 30;
+        let updatedServers = [];
         
-        const updatedServers = await Promise.all(pingPromises);
+        for (let i = 0; i < servers.length; i += chunkSize) {
+            const chunk = servers.slice(i, i + chunkSize);
+            const pingPromises = chunk.map(server => {
+                const port = parseInt(server.port) || 19132;
+                return util.statusBedrock(server.host, port, { timeout: 3000, enableSRV: true })
+                    .then(res => ({
+                        ...server,
+                        status: {
+                            online: true,
+                            players: res.players.online,
+                            max: res.players.max,
+                            motd: res.motd.clean,
+                            ping: res.roundTripLatency || 0
+                        }
+                    }))
+                    .catch(() => ({
+                        ...server,
+                        status: {
+                            online: false,
+                            players: 0,
+                            max: 0
+                        }
+                    }));
+            });
+            const chunkResults = await Promise.all(pingPromises);
+            updatedServers.push(...chunkResults);
+        }
         
         // 3. Update Supabase
         // Pour éviter de faire 100 requêtes, on utilise upsert en bulk
