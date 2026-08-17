@@ -86,6 +86,28 @@ export default function MCPEHome() {
     }
   };
 
+  const handleAffiliate = async (host, is_affiliated) => {
+    const adminPassword = window.prompt(`Please enter the administrator password to ${is_affiliated ? 'mark as affiliated' : 'remove affiliation'}:`);
+    if (!adminPassword) return;
+    
+    try {
+      const res = await fetch('/api/mcpe/affiliate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, password: adminPassword, is_affiliated })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setServers(servers.map(s => s.host === host ? { ...s, is_affiliated } : s));
+      } else {
+        alert(data.error || 'Error during affiliation');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error');
+    }
+  };
+
   useEffect(() => {
     fetchServers();
     const interval = setInterval(fetchServers, 60000); // 1 min update
@@ -114,6 +136,7 @@ export default function MCPEHome() {
 
   const nationsCount = {};
   servers.forEach(s => {
+    if (s.is_affiliated) return;
     const players = s.status?.players || 0;
     if (s.country && s.country !== 'unknown') {
         nationsCount[s.country] = (nationsCount[s.country] || 0) + players;
@@ -159,7 +182,7 @@ export default function MCPEHome() {
       statLabel = "Players online (Country Filter) / Filtered Servers";
   } else {
       displayPlayers = totalPlayers;
-      displayServersCount = servers.length;
+      displayServersCount = servers.filter(s => !s.is_affiliated).length;
   }
 
   const chartLines = useMemo(() => {
@@ -585,8 +608,8 @@ export default function MCPEHome() {
                   const isSelected = selectedServers.includes(server.host);
                   return (
                   <li 
-                    key={idx} 
-                    className="server-item" 
+                    key={server.host} 
+                    className={`server-item ${isSelected ? 'selected' : ''}`}
                     onClick={() => toggleServer(server.host)}
                     style={{
                       position: 'relative',
@@ -599,9 +622,16 @@ export default function MCPEHome() {
                       boxShadow: isSelected ? '0 0 15px rgba(59, 130, 246, 0.3)' : 'none',
                       cursor: 'pointer',
                       transform: isSelected ? 'scale(1.01)' : 'scale(1)',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      opacity: server.is_affiliated ? 0.6 : 1,
+                      filter: server.is_affiliated ? 'grayscale(0.7)' : 'none'
                     }}
                   >
+                    {server.is_affiliated && (
+                        <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#f59e0b', color: '#000', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', zIndex: 3 }}>
+                            FEATURED
+                        </div>
+                    )}
                     <div className="server-info" style={{ display: 'flex', alignItems: 'center', gap: '1rem', zIndex: 1, position: 'relative' }}>
                       {server.logo && (
                         <img src={server.logo} alt={server.name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }} />
@@ -651,6 +681,28 @@ export default function MCPEHome() {
                       )}
                       
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleAffiliate(server.host, !server.is_affiliated);
+                            }}
+                            title={server.is_affiliated ? "Remove Affiliation" : "Mark as Affiliated"}
+                            style={{
+                               background: server.is_affiliated ? 'rgba(245, 158, 11, 0.8)' : 'rgba(245, 158, 11, 0.2)',
+                               border: '1px solid rgba(245, 158, 11, 0.5)',
+                               color: server.is_affiliated ? '#fff' : '#f59e0b',
+                               borderRadius: '50%',
+                               width: '32px',
+                               height: '32px',
+                               display: 'flex',
+                               alignItems: 'center',
+                               justifyContent: 'center',
+                               cursor: 'pointer',
+                               transition: 'all 0.2s'
+                            }}
+                          >
+                            ⭐
+                          </button>
                           <button 
                             onClick={(e) => {
                                 e.stopPropagation();
