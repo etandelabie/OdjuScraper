@@ -12,6 +12,7 @@ export default function MCPEHome() {
   const [selectedCountries, setSelectedCountries] = useState([]);
   const [selectedServers, setSelectedServers] = useState([]);
   const [showAllNations, setShowAllNations] = useState(false);
+  const [period, setPeriod] = useState('24h');
 
   const fetchServers = async () => {
     try {
@@ -25,14 +26,23 @@ export default function MCPEHome() {
         }
       }
       
-      const histRes = await fetch('/api/mcpe/history', { cache: 'no-store' });
+      const histRes = await fetch(`/api/mcpe/history?period=${period}`, { cache: 'no-store' });
       const histData = await histRes.json();
       if (histData.success && histData.history) {
-        const formattedHistory = histData.history.map(item => ({
-            ...item,
-            timeLabel: new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            serverData: item.serverData || {}
-        }));
+        const formattedHistory = histData.history.map(item => {
+            const date = new Date(item.timestamp);
+            let timeLabel = '';
+            if (period === '24h') {
+                timeLabel = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else {
+                timeLabel = `${date.getDate()}/${date.getMonth()+1} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            }
+            return {
+                ...item,
+                timeLabel,
+                serverData: item.serverData || {}
+            };
+        });
         setHistoryData(formattedHistory);
       }
     } catch (error) {
@@ -71,9 +81,9 @@ export default function MCPEHome() {
 
   useEffect(() => {
     fetchServers();
-    const interval = setInterval(fetchServers, 30000);
+    const interval = setInterval(fetchServers, 60000); // 1 min update
     return () => clearInterval(interval);
-  }, []);
+  }, [period]);
 
   const nationsCount = {};
   servers.forEach(s => {
@@ -204,12 +214,36 @@ export default function MCPEHome() {
             </div>
 
             {historyData.length > 0 && (
-                <div style={{ marginTop: '2rem', marginBottom: '2rem', height: '250px', width: '100%' }}>
-                    <h2 style={{ marginBottom: '1rem' }}>
-                        {selectedServers.length > 0 ? "Selected Servers Trend" : 
-                         selectedCountries.length === 1 ? `Server Breakdown (${selectedCountries[0].toUpperCase()})` :
-                         selectedCountries.length > 1 ? `Players Trend (Country Filter)` : "Global Players Trend"}
-                    </h2>
+                <div style={{ marginTop: '2rem', marginBottom: '2rem', height: '280px', width: '100%' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+                        <h2 style={{ margin: 0 }}>
+                            {selectedServers.length > 0 ? "Selected Servers Trend" : 
+                             selectedCountries.length === 1 ? `Server Breakdown (${selectedCountries[0].toUpperCase()})` :
+                             selectedCountries.length > 1 ? `Players Trend (Country Filter)` : "Global Players Trend"}
+                        </h2>
+                        
+                        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(15, 23, 42, 0.6)', padding: '0.3rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            {['24h', '7d', '30d'].map(p => (
+                                <button 
+                                    key={p}
+                                    onClick={() => setPeriod(p)}
+                                    style={{
+                                        background: period === p ? '#3b82f6' : 'transparent',
+                                        color: period === p ? 'white' : 'rgba(255,255,255,0.7)',
+                                        border: 'none',
+                                        padding: '0.4rem 0.8rem',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 'bold',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {p === '24h' ? 'Last 24h' : p === '7d' ? '7 Days' : '30 Days'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={chartData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
