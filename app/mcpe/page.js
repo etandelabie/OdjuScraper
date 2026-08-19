@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, AreaChart, Area } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, AreaChart, Area, Cell, ReferenceLine } from 'recharts';
 
 export default function MCPEHome() {
   const [servers, setServers] = useState([]);
@@ -18,7 +18,9 @@ export default function MCPEHome() {
   // Profile specific states
   const [serverProfileData, setServerProfileData] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
-  const [trendComparison, setTrendComparison] = useState('yesterday'); // 'yesterday', 'lastWeek'
+  const [trendChartPeriod, setTrendChartPeriod] = useState('day'); // 'hour', 'day', 'week', 'month'
+  const [serverTrendData, setServerTrendData] = useState([]);
+  const [trendLoading, setTrendLoading] = useState(false);
   const [profileChartPeriod, setProfileChartPeriod] = useState('7d'); // '7d', '30d'
   const [isClient, setIsClient] = useState(false);
 
@@ -34,8 +36,8 @@ export default function MCPEHome() {
         const savedProfileHost = localStorage.getItem('mcpe_profileHost');
         if (savedProfileHost) setProfileHost(savedProfileHost);
         
-        const savedTrend = localStorage.getItem('mcpe_trendComparison');
-        if (savedTrend) setTrendComparison(savedTrend);
+        const savedTrendPeriod = localStorage.getItem('mcpe_trendChartPeriod');
+        if (savedTrendPeriod) setTrendChartPeriod(savedTrendPeriod);
         
         const savedChartPeriod = localStorage.getItem('mcpe_profileChartPeriod');
         if (savedChartPeriod) setProfileChartPeriod(savedChartPeriod);
@@ -58,8 +60,8 @@ export default function MCPEHome() {
   }, [profileHost, isClient]);
 
   useEffect(() => {
-    if (isClient) localStorage.setItem('mcpe_trendComparison', trendComparison);
-  }, [trendComparison, isClient]);
+    if (isClient) localStorage.setItem('mcpe_trendChartPeriod', trendChartPeriod);
+  }, [trendChartPeriod, isClient]);
 
   useEffect(() => {
     if (isClient) localStorage.setItem('mcpe_profileChartPeriod', profileChartPeriod);
@@ -177,6 +179,29 @@ export default function MCPEHome() {
           setServerProfileData(null);
       }
   }, [profileHost]);
+
+  useEffect(() => {
+      if (profileHost) {
+          setTrendLoading(true);
+          fetch(`/api/mcpe/server_trends?host=${profileHost}&period=${trendChartPeriod}`)
+              .then(res => res.json())
+              .then(data => {
+                  if (data.success) {
+                      setServerTrendData(data.trends || []);
+                  } else {
+                      setServerTrendData([]);
+                  }
+                  setTrendLoading(false);
+              })
+              .catch(err => {
+                  console.error(err);
+                  setTrendLoading(false);
+                  setServerTrendData([]);
+              });
+      } else {
+          setServerTrendData([]);
+      }
+  }, [profileHost, trendChartPeriod]);
 
   const nationsCount = {};
   servers.forEach(s => {
@@ -313,18 +338,7 @@ export default function MCPEHome() {
       const srv = servers.find(s => s.host === profileHost);
       if (!srv) return null;
       
-      const { dailyData, averagePeakHour, trends } = serverProfileData;
-      
-      // Calculate trend percentage
-      let trendValue = 0;
-      const currentAvg = trendComparison === 'yesterday' ? trends.current24h : trends.current7d;
-      const prevAvg = trendComparison === 'yesterday' ? trends.yesterday : trends.lastWeek;
-      
-      if (prevAvg && prevAvg > 0 && currentAvg !== null) {
-          trendValue = (((currentAvg - prevAvg) / prevAvg) * 100).toFixed(1);
-      } else if (!prevAvg && currentAvg > 0) {
-          trendValue = 100;
-      }
+      const { dailyData, averagePeakHour } = serverProfileData;
       
       const recordTimestamp = srv.status?.record_timestamp ? new Date(srv.status.record_timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Unknown';
       
@@ -348,13 +362,11 @@ export default function MCPEHome() {
       return {
           server: srv,
           peakHour: `${averagePeakHour}h00`,
-          trend: trendValue,
-          trendBasis: trendComparison === 'yesterday' ? 'vs Yesterday' : 'vs Last Week',
           recordAllTime: srv.status?.record_players || 0,
           recordTimestamp,
           dailyCharts: filteredDailyData
       };
-  }, [profileHost, serverProfileData, servers, trendComparison, profileChartPeriod]);
+  }, [profileHost, serverProfileData, servers, profileChartPeriod]);
 
   return (
     <div className="container">
@@ -425,17 +437,10 @@ export default function MCPEHome() {
                                 <span style={{ color: 'var(--text-secondary)' }}>Peak Hour</span>
                                 <strong style={{ color: '#3b82f6' }}>~ {profileStats.peakHour}</strong>
                             </li>
-                            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <select 
-                                    value={trendComparison} 
-                                    onChange={(e) => setTrendComparison(e.target.value)}
-                                    style={{ background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '1px 3px', fontSize: '0.7rem', outline: 'none' }}
-                                >
-                                    <option value="yesterday">vs Yday</option>
-                                    <option value="lastWeek">vs Week</option>
-                                </select>
-                                <strong style={{ color: profileStats.trend > 0 ? '#10b981' : profileStats.trend < 0 ? '#ef4444' : 'white', fontSize: '0.9rem', textAlign: 'right' }}>
-                                    {profileStats.trend > 0 ? '+' : ''}{profileStats.trend}%
+                            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ color: 'var(--text-secondary)' }}>Status</span>
+                                <strong style={{ color: profileStats.server.status?.online ? '#10b981' : '#ef4444' }}>
+                                    {profileStats.server.status?.online ? 'Online' : 'Offline'}
                                 </strong>
                             </li>
                         </ul>
@@ -461,48 +466,116 @@ export default function MCPEHome() {
                     </div>
                 </div>
                 
-                <div className="glass-panel" style={{ padding: '1rem' }}>
+                <div style={{ marginTop: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
-                        <h3 style={{ margin: 0, fontSize: '0.9rem' }}>Daily Analytics</h3>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                            {['7d', '30d'].map(p => (
-                                <button 
-                                    key={p} onClick={() => setProfileChartPeriod(p)}
-                                    style={{ background: profileChartPeriod === p ? '#f59e0b' : 'transparent', color: profileChartPeriod === p ? '#fff' : 'rgba(255,255,255,0.5)', border: 'none', borderRadius: '4px', padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
-                                >
-                                    {p}
-                                </button>
-                            ))}
+                        <h3 style={{ fontSize: '1.1rem', color: '#3b82f6', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            Deep Analytics
+                        </h3>
+                    </div>
+
+                    <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h4 style={{ margin: 0, fontSize: '0.9rem' }}>Daily Activity</h4>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                {['7d', '30d'].map(p => (
+                                    <button 
+                                        key={p} onClick={() => setProfileChartPeriod(p)}
+                                        style={{ background: profileChartPeriod === p ? '#f59e0b' : 'transparent', color: profileChartPeriod === p ? '#fff' : 'rgba(255,255,255,0.5)', border: 'none', borderRadius: '4px', padding: '2px 6px', fontSize: '0.7rem', cursor: 'pointer' }}
+                                    >
+                                        {p}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Peaks</h4>
+                                <div style={{ width: '100%', height: '160px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={profileStats.dailyCharts} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                                            <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
+                                            <YAxis stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
+                                            <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '4px', fontSize: '10px' }} />
+                                            <Bar dataKey="maxPlayers" name="Peak" fill="#ec4899" radius={[2, 2, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Uptime</h4>
+                                <div style={{ width: '100%', height: '160px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={profileStats.dailyCharts} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                                            <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
+                                            <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
+                                            <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '4px', fontSize: '10px' }} />
+                                            <Area type="step" dataKey="uptimePercent" name="Uptime" stroke="#10b981" fill="rgba(16,185,129,0.2)" strokeWidth={2} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div>
-                            <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Peaks</h4>
-                            <div style={{ width: '100%', height: '160px' }}>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={profileStats.dailyCharts} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
-                                        <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
-                                        <YAxis stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
-                                        <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '4px', fontSize: '10px' }} />
-                                        <Bar dataKey="maxPlayers" name="Peak" fill="#ec4899" radius={[2, 2, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
+
+                    <div className="glass-panel" style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h4 style={{ fontSize: '0.9rem', margin: 0, color: 'var(--text-primary)' }}>Trend Evolution</h4>
+                            <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                {['hour', 'day', 'week', 'month'].map(p => (
+                                    <button 
+                                        key={p}
+                                        onClick={() => setTrendChartPeriod(p)}
+                                        style={{
+                                            background: trendChartPeriod === p ? '#3b82f6' : 'transparent',
+                                            color: trendChartPeriod === p ? 'white' : 'rgba(255,255,255,0.5)',
+                                            border: 'none',
+                                            padding: '2px 6px',
+                                            borderRadius: '3px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.7rem',
+                                            fontWeight: trendChartPeriod === p ? 'bold' : 'normal',
+                                            textTransform: 'capitalize'
+                                        }}
+                                    >
+                                        {p}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-
-                        <div>
-                            <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>Uptime</h4>
-                            <div style={{ width: '100%', height: '160px' }}>
+                        
+                        <div style={{ height: '180px', width: '100%', position: 'relative' }}>
+                            {trendLoading && (
+                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(15,23,42,0.7)', zIndex: 10, borderRadius: '8px' }}>
+                                    <div className="loader" style={{ width: 30, height: 30, borderWidth: 3 }}></div>
+                                </div>
+                            )}
+                            {serverTrendData.length === 0 && !trendLoading ? (
+                                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+                                    Not enough data for this period
+                                </div>
+                            ) : (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={profileStats.dailyCharts} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
-                                        <XAxis dataKey="shortDate" stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
-                                        <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.3)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
-                                        <Tooltip contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '4px', fontSize: '10px' }} />
-                                        <Area type="step" dataKey="uptimePercent" name="Uptime" stroke="#10b981" fill="rgba(16,185,129,0.2)" strokeWidth={2} />
-                                    </AreaChart>
+                                    <BarChart data={serverTrendData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                        <XAxis dataKey="timeLabel" stroke="rgba(255,255,255,0.2)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
+                                        <YAxis tickFormatter={(val) => `${val}%`} stroke="rgba(255,255,255,0.2)" tick={{fill: 'rgba(255,255,255,0.5)', fontSize: 9}} />
+                                        <Tooltip 
+                                            contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '4px', fontSize: '11px' }}
+                                            formatter={(value) => [`${value > 0 ? '+' : ''}${value}%`, 'Trend']}
+                                            labelFormatter={(label, payload) => `Period: ${label} (${payload[0]?.payload?.avgPlayers || 0} avg players)`}
+                                            cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                        />
+                                        <ReferenceLine y={0} stroke="rgba(255,255,255,0.3)" />
+                                        <Bar dataKey="trendPercent" radius={[2, 2, 0, 0]}>
+                                            {serverTrendData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.trendPercent > 0 ? '#10b981' : entry.trendPercent < 0 ? '#ef4444' : '#64748b'} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
                                 </ResponsiveContainer>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
