@@ -23,14 +23,7 @@ export async function GET(req) {
             return NextResponse.json({ success: false, error: dailyError.message });
         }
         
-        let sumPeakHours = 0;
-        let countDays = 0;
-        
         const dailyArray = (dailyDataRows || []).map(ds => {
-            if (ds.peak_hour >= 0 && ds.max_players > 0) {
-                sumPeakHours += ds.peak_hour;
-                countDays++;
-            }
             return {
                 date: ds.date_day,
                 maxPlayers: ds.max_players,
@@ -38,7 +31,10 @@ export async function GET(req) {
             };
         });
         
-        const averagePeakHour = countDays > 0 ? Math.round(sumPeakHours / countDays) : 0;
+        // L'heure de pointe est maintenant calculée globalement par la base de données
+        const averagePeakHour = (dailyDataRows && dailyDataRows.length > 0 && dailyDataRows[0].peak_hour != null) 
+            ? dailyDataRows[0].peak_hour 
+            : 0;
         
         const { data: history, error: historyError } = await supabase
             .rpc('get_mcpe_history_sampled', { start_time: startTime, interval_minutes: 30 });
