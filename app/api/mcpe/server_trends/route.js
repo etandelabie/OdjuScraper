@@ -47,14 +47,18 @@ export async function GET(req) {
             const dateObj = new Date(current.period_date);
             let timeLabel = '';
             
+            // Convert to Paris time manually to avoid Vercel UTC shift
+            const parisString = dateObj.toLocaleString('en-US', { timeZone: 'Europe/Paris', hour12: false });
+            const pDate = new Date(parisString);
+            
             if (period === 'hour') {
-                timeLabel = `${dateObj.getHours()}h`;
+                timeLabel = `${pDate.getHours().toString().padStart(2, '0')}h`;
             } else if (period === 'day') {
-                timeLabel = `${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`;
+                timeLabel = `${pDate.getDate().toString().padStart(2, '0')}/${(pDate.getMonth() + 1).toString().padStart(2, '0')}`;
             } else if (period === 'week') {
-                timeLabel = `W${getWeekNumber(dateObj)}`;
+                timeLabel = `W${getWeekNumber(pDate)}`;
             } else if (period === 'month') {
-                timeLabel = dateObj.toLocaleString('en-US', { month: 'short' });
+                timeLabel = pDate.toLocaleString('en-US', { month: 'short' });
             }
 
             trends.push({
