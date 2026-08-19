@@ -33,7 +33,8 @@ export async function GET(req) {
     history.forEach(point => {
         const players = point.players || 0;
         const date = new Date(point.timestamp);
-        const dayKey = date.toISOString().split('T')[0];
+        // Utiliser l'heure de Paris pour grouper correctement les jours (évite le décalage de minuit)
+        const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
         
         if (!dailyStats[dayKey]) {
             dailyStats[dayKey] = {
@@ -58,8 +59,11 @@ export async function GET(req) {
     history.forEach(point => {
         const players = point.players || 0;
         const date = new Date(point.timestamp);
-        const dayKey = date.toISOString().split('T')[0];
-        const hour = date.getHours();
+        const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+        
+        // Récupérer l'heure en locale (Paris)
+        const hourString = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: 'numeric' }).format(date);
+        const hour = parseInt(hourString.replace(' h', ''), 10);
         
         if (!dailyHours[dayKey]) dailyHours[dayKey] = Array(24).fill(0);
         // Take the max player count for that hour in that day
