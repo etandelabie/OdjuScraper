@@ -26,7 +26,7 @@ export async function GET(req) {
     let sumPeakHours = 0;
     let countDays = 0;
     
-    const dailyArray = dailyDataRows.map(ds => {
+    const dailyArray = (dailyDataRows || []).map(ds => {
         if (ds.peak_hour >= 0 && ds.max_players > 0) {
             sumPeakHours += ds.peak_hour;
             countDays++;
@@ -57,7 +57,7 @@ export async function GET(req) {
             history.forEach(point => {
                 const time = new Date(point.timestamp).getTime();
                 if (time >= start && time < end) {
-                    sum += (point.server_data[host] || 0);
+                    sum += (point.server_data?.[host] || 0);
                     count++;
                 }
             });
