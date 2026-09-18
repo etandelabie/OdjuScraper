@@ -1,7 +1,47 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+const ServerItem = memo(({ server }) => (
+  <li className="server-item" style={{
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundImage: server.banner ? `linear-gradient(to right, rgba(15, 23, 42, 0.95) 40%, rgba(15, 23, 42, 0.6)), url(${server.banner})` : 'none',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    borderLeft: server.banner ? '4px solid var(--primary)' : undefined
+  }}>
+    <div className="server-info" style={{ display: 'flex', alignItems: 'center', gap: '1rem', zIndex: 1, position: 'relative' }}>
+      {server.logo && (
+        <img src={server.logo} alt={server.name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }} />
+      )}
+      <div>
+        <h3 style={{ textShadow: server.banner ? '0 2px 4px rgba(0,0,0,0.8)' : 'none' }}>{server.name || server.host}</h3>
+        <p style={{ textShadow: server.banner ? '0 1px 2px rgba(0,0,0,0.8)' : 'none' }}>{server.host}:{server.port || 5520}</p>
+        {server.status?.motd && server.status.motd !== 'Hytale' && (
+          <p style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>
+            {server.status.motd}
+          </p>
+        )}
+      </div>
+    </div>
+    <div className="server-stats" style={{ zIndex: 1, position: 'relative' }}>
+      {server.status && server.status.online ? (
+        <>
+          <span className="players-count" style={{ textShadow: server.banner ? '0 1px 3px rgba(0,0,0,0.9)' : 'none' }}>
+            {server.status.players} {server.status.max > 0 ? `/ ${server.status.max}` : 'Players'}
+          </span>
+          {server.status.ping > 0 && <span className="ping-info">{server.status.ping}ms</span>}
+          <span className="status-badge status-online" style={{ boxShadow: server.banner ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none' }}>ONLINE</span>
+        </>
+      ) : (
+        <span className="status-badge status-offline">OFFLINE</span>
+      )}
+    </div>
+  </li>
+));
+ServerItem.displayName = 'ServerItem';
 
 export default function Home() {
   const [servers, setServers] = useState([]);
@@ -98,7 +138,7 @@ export default function Home() {
           <div className="glass-panel">
             <div className="stat-box">
               <div className="stat-value" style={{ fontSize: '2.5rem' }}>
-                {loading && servers.length === 0 ? '-' : `${totalPlayers.toLocaleString()} / ${servers.length}`}
+                {loading && servers.length === 0 ? <div className="skeleton skeleton-title" style={{ margin: '0 auto', width: '150px' }}></div> : `${totalPlayers.toLocaleString()} / ${servers.length}`}
               </div>
               <div className="stat-label">Players online / Unique servers</div>
             </div>
@@ -123,48 +163,16 @@ export default function Home() {
 
             <h2>Active Servers</h2>
             {loading && servers.length === 0 ? (
-              <div className="center-content">
-                <div className="loader"></div>
+              <div style={{ marginTop: '1.5rem' }}>
+                <div className="skeleton skeleton-item"></div>
+                <div className="skeleton skeleton-item"></div>
+                <div className="skeleton skeleton-item"></div>
+                <div className="skeleton skeleton-item"></div>
               </div>
             ) : (
               <ul className="server-list" style={{ marginTop: '1.5rem' }}>
                 {servers.map((server, idx) => (
-                  <li key={idx} className="server-item" style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    backgroundImage: server.banner ? `linear-gradient(to right, rgba(15, 23, 42, 0.95) 40%, rgba(15, 23, 42, 0.6)), url(${server.banner})` : 'none',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    borderLeft: server.banner ? '4px solid var(--primary)' : undefined
-                  }}>
-                    <div className="server-info" style={{ display: 'flex', alignItems: 'center', gap: '1rem', zIndex: 1, position: 'relative' }}>
-                      {server.logo && (
-                        <img src={server.logo} alt={server.name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.1)' }} />
-                      )}
-                      <div>
-                        <h3 style={{ textShadow: server.banner ? '0 2px 4px rgba(0,0,0,0.8)' : 'none' }}>{server.name || server.host}</h3>
-                        <p style={{ textShadow: server.banner ? '0 1px 2px rgba(0,0,0,0.8)' : 'none' }}>{server.host}:{server.port || 5520}</p>
-                        {server.status?.motd && server.status.motd !== 'Hytale' && (
-                          <p style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>
-                            {server.status.motd}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="server-stats" style={{ zIndex: 1, position: 'relative' }}>
-                      {server.status && server.status.online ? (
-                        <>
-                          <span className="players-count" style={{ textShadow: server.banner ? '0 1px 3px rgba(0,0,0,0.9)' : 'none' }}>
-                            {server.status.players} {server.status.max > 0 ? `/ ${server.status.max}` : 'Players'}
-                          </span>
-                          {server.status.ping > 0 && <span className="ping-info">{server.status.ping}ms</span>}
-                          <span className="status-badge status-online" style={{ boxShadow: server.banner ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none' }}>ONLINE</span>
-                        </>
-                      ) : (
-                        <span className="status-badge status-offline">OFFLINE</span>
-                      )}
-                    </div>
-                  </li>
+                  <ServerItem key={server.host || idx} server={server} />
                 ))}
                 {servers.length === 0 && !loading && (
                   <p style={{ color: 'var(--text-secondary)' }}>No servers found. Add one to start tracking!</p>
